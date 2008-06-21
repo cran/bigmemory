@@ -1,0 +1,19 @@
+# bigmemory
+#
+# This package is a bit unusual in that the non-Windows version
+# supports the use of shared memory, while the Windows version
+# only provides the basic support of the massive matrices.
+# As a result, the configure moves the relevant shared-memory
+# files out of the package, and the clean should put them back
+# into place.
+#
+# We include a sysctl.conf in the package root as an example for
+# users.  If this isn't configured correctly, there may be serious
+# shared memory limitations.
+#
+# We also include a script ipc.R which will blow away any and all
+# shared memory segments associated with your username.  Use with
+# care, but it's useful when something crashes.  Run it with
+#      R CMD BATCH ipc.R
+#
+

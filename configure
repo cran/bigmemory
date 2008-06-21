@@ -1,0 +1,13 @@
+####################################################################
+# configure for package bigmemory
+# John W. Emerson and Michael Kane
+#
+# Sadly, we haven't been able to figure out shared memory under
+# windows.  This makes it necessary to do this rather awkward
+# stripped-down version of bigmemory.  For the most part, we simply
+# move certain files out of the package.  We have a few #ifndef
+# directives in the .h files.  We need an abbreviated NAMESPACE
+# file, and we use a somewhat sloppy OS flag to help out.
+
+cp unixdef.h src/ostypedef.h
+cp namespace.unix NAMESPACE

@@ -1,0 +1,8 @@
+import(methods)
+importFrom(utils, head, tail)
+export(big.matrix, as.big.matrix, is.big.matrix, add.cols, rm.cols, shared.big.matrix, is.shared, attach.big.matrix, rw.mutex, attach.rw.mutex, describe, kmeans.big.matrix, biglm.big.matrix, bigglm.big.matrix, hash.mat, deepcopy, shared.deepcopy, read.big.matrix, write.big.matrix, dimnames, "dimnames<-", colsd, colvar, mwhich, colmin, colmax, colrange, colsum, colprod, colmean)
+exportClasses(big.matrix,rw.mutex)
+exportMethods("[", "[<-", mean, min, max, range, prod, sum, nrow, ncol, summary, print, head, tail, typeof)
+
+useDynLib(bigmemory) # Was .so
+
