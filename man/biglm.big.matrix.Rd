@@ -44,6 +44,7 @@ Thomas Lumley (2005). biglm: bounded memory linear and generalized
 # data.  But it shows that our wrapper to Lumley's biglm() function produces
 # the same answer as the plain old lm() function.
 
+\dontrun{
 x <- matrix(unlist(iris), ncol=5)
 colnames(x) <- names(iris)
 x <- as.big.matrix(x)
@@ -58,6 +59,7 @@ head(y)
 
 silly.lm <- lm(Sepal.Length ~ Sepal.Width + Species, data=y)
 summary(silly.lm)
+}
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
