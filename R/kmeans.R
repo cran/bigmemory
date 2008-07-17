@@ -120,6 +120,8 @@ kmeans.big.matrix <- function(x, centers, iter.max = 10, nstart = 1,
   if (is.shared(x) && parallel=="nws" && nstart>1 && !is.null(nwssleigh)) {
 
     cat("Running multiple starts in parallel using NetWorkSpaces.\n")
+    cat("If this hangs or crashes, a NWS server is required; please see the help\n")
+    cat("file for more information.\n")
     ans <- eachElem(nwssleigh, worker.km, elementArgs=rep(1,nstart), fixedArgs=list(desc))
     best <- 1
     if (length(ans)>1) {

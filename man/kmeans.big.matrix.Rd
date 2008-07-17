@@ -43,6 +43,12 @@ example from their help pages before trying \code{kmeans.big.matrix()}.  Also, b
 the shared-memory parallel algorithm is only working on the local machine (not sharing
 resources of a cluster of machines).  It doesn't make sense to allocate more
 clients than the number of available cores.
+
+If you are unfamiliar with NetWorkSpaces, it requires both the \code{nws} package
+(available from CRAN) and a NetWorkSpaces server (freely available but somewhat more
+work to get started).  We will keep a page updated with links and information to help
+you get started: \url{http://www.stat.yale.edu/~jay/nws/}.
+
 }
 \value{
 An object of class \texttt{kmeans}, just as produced by \code{\link{kmeans}}.
