@@ -21,7 +21,7 @@
  *  http://www.r-project.org/Licenses/
  */
 
-#include <malloc.h>
+//#include <malloc.h>
 #include <stdio.h>
 
 #include <string>
