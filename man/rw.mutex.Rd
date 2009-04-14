@@ -1,6 +1,9 @@
 \name{rw.mutex, attach.rw.mutex}
 \alias{rw.mutex}
 \alias{attach.rw.mutex}
+\alias{rlock}
+\alias{rwlock}
+\alias{unlock}
 \title{Mutual exclusion functionality for shared memory matrices in package ``bigmemory''}
 \description{
 These functions provide additional read/write mutexes (mutual exclusions) for use
@@ -10,30 +13,35 @@ with \code{big.matrix} objects in shared memory (class \code{\link{big.matrix}} 
 \usage{
 rw.mutex()
 attach.rw.mutex(mutexId)
+rlock(x)
+rwlock(x)
+unlock(x)
 }
 \arguments{
   \item{mutexId}{the shared memory key for the mutex.}
+  \item{x}{an object of type \code{rw.mutex}.}
 }
 \details{
-Mutexes are provided with every shared matrix and managed transparently by the various
+Mutexes are provided with every shared matrix (including file-backed matrices) and are
+managed transparently by the various
 functions provided for \code{\link{big.matrix}} objects (\code{\link{mwhich}},
 for example).  However, the user may create an additional layer of mutexes
 using these functions.  This may be important in certain shared memory applications.
 
-Note that \code{describe()} can be used to retrieve the \code{rw.mutex} information.
+Note that \code{\link{describe}} should be used to retrieve the \code{rw.mutex} information.
 }
 \value{
 A new instance of type \code{rw.mutex} is returned.
 }
-\references{C libraries pthread, ipc, and shm are used for shared memory and mutexes.}
+\references{http://www.boost.org}
 \author{John W. Emerson and Michael J. Kane}
 \note{
-Shared memory is not presently supported by the Windows version of 
-\code{\link{bigmemory}} (but you wouldn't be reading this comment if you had
-the Windows version).  We recommend reading the additional documentation in
-\code{\link{shared.big.matrix}}, or contact us if you have questions.
+We recommend you contact us if you have questions about user mutexes, which are not for the
+faint of heart.
 }
-\seealso{\code{\link{big.matrix}}, \code{\link{shared.big.matrix}}.}
+\seealso{\code{\link{big.matrix}}, \code{\link{shared.big.matrix}},
+\code{\link{filebacked.big.matrix}}, \code{\link{describe}}.
+}
 \examples{
 # None.
 }

@@ -19,13 +19,13 @@ Objects can be created by calls of the form \code{new("rw.mutex", ...)}.
     \item{describe}{\code{signature(x = "rw.mutex")}: ... }
 	 }
 }
-\references{*nix system libraries pthread, ipc, and shm.}
 \author{Michael J. Kane and John W. Emerson}
 \section{Warning}{Mutexes are not for the faint of heart.  But if you want an additional set of locks 
 beyond those already implemented with a shared matrix, you'll need this.  
-We recommend you look at the documentation in \code{\link{shared.big.matrix}}, or contact us if you
-have questions.} 
-\seealso{\code{\link{big.matrix}}, \code{\link{shared.big.matrix}}.
+We recommend you contact us if you have questions.} 
+\seealso{\code{\link{big.matrix}}, \code{\link{shared.big.matrix}},
+\code{\link{filebacked.big.matrix}}, \code{\link{rw.mutex}}, \code{\link{attach.rw.mutex}},
+\code{\link{rlock}}, \code{\link{rwlock}}, \code{\link{unlock}}.
 }
 \examples{
 showClass("rw.mutex")

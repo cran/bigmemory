@@ -25,18 +25,52 @@
 #include <math.h>
 #include "util.h"
 
-bool isna( const char val ) { return NA_CHAR == val; }
-bool isna( const short val ) { return NA_SHORT == val; }
-bool isna( const int val ) { return NA_INTEGER == val; }
-bool isna( const double val ) { return isnan(val); }
+vector<string> RChar2StringVec( SEXP charVec )
+{
+  vector<string> ret( GET_LENGTH(charVec) );
+  unsigned long i;
+  for (i=0; i < ret.size(); ++i)
+  {
+    ret[i] = string(CHAR(STRING_ELT(charVec, i)));
+  }
+  return ret;
+}
 
-bool neginf( const char val ) {return false;}
-bool neginf( const short val ) {return false;}
-bool neginf( const int val ) {return false;}
-bool neginf( const double val ) {return isinf(val) && val < 0;}
+vector<string> RChar2StringVec( SEXP charVec, 
+  const vector<unsigned long> &indices )
+{
+  vector<string> ret( indices.size() );
+  unsigned long i;
+  for (i=0; i < indices.size(); ++i)
+  {
+    ret[i] = string(CHAR(STRING_ELT(charVec, indices[i]-1)));
+  }
+  return ret;
+}
 
-bool posinf( const char val ) {return false;};
-bool posinf( const short val ) {return false;};
-bool posinf( const int val ) {return false;};
-bool posinf( const double val ) {return isinf(val) && val >= 0;}
+std::string RChar2String(SEXP str)
+{
+  return string(CHAR(STRING_ELT(str, 0)));
+}
 
+SEXP StringVec2RChar( const vector<string> &strVec )
+{
+  if (strVec.empty())
+    return NULL_USER_OBJECT;
+  SEXP ret = PROTECT(allocVector(STRSXP, strVec.size()));
+  unsigned long i;
+  for (i=0; i < strVec.size(); ++i)
+  {
+    SET_STRING_ELT(ret, i, mkChar(strVec[i].c_str()));
+  }
+  UNPROTECT(1);
+  return ret;
+}
+
+SEXP String2RChar(const std::string &str)
+{
+  SEXP ret = PROTECT(allocVector(STRSXP, 1));
+  SET_STRING_ELT(ret, 0, mkChar(str.c_str()));
+  UNPROTECT(1);
+  return ret;
+}
