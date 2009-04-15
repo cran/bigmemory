@@ -24,22 +24,40 @@
 #ifndef BIGMEMORY_UTIL_HPP
 #define BIGMEMORY_UTIL_HPP
 
-#include "bm_defines.h"
+#include <vector>
+#include <string>
+#include <Rdefines.h>
 
-bool isna( const char val );
-bool isna( const short val );
-bool isna( const int val );
-bool isna( const double val );
+using namespace std;
 
-bool neginf( const char val );
-bool neginf( const short val );
-bool neginf( const int val );
-bool neginf( const double val );
+vector<string> RChar2StringVec( SEXP charVec );
 
-bool posinf( const char val );
-bool posinf( const short val );
-bool posinf( const int val );
-bool posinf( const double val );
+vector<string> RChar2StringVec( SEXP charVec, 
+  const vector<unsigned long> &indices );
+
+SEXP String2RChar(const std::string &str);
+
+std::string RChar2String(SEXP str);
+
+SEXP StringVec2RChar( const vector<string> &strVec );
+
+template<typename T>
+SEXP StringVec2RChar( const vector<string> &strVec,
+  T indices, const unsigned long indicesLength )
+{
+  if (strVec.empty())
+    return NULL_USER_OBJECT;
+  SEXP ret = PROTECT(allocVector(STRSXP, indicesLength));
+  unsigned long i;
+  for (i=0; i < indicesLength; ++i)
+  {
+    SET_STRING_ELT(ret, i, 
+      mkChar(strVec[static_cast<unsigned long>(indices[i])-1].c_str()));
+  }
+  UNPROTECT(1);
+  return ret;
+}
+
 
 template<typename T>
 struct NewVec;

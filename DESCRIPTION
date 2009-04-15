@@ -1,12 +1,17 @@
 Package: bigmemory
 Type: Package
-Title: Manage massive matrices in R using C++, with UNIX support for shared memory
-Version: 2.3
-Date: 2008-07-26
+Title: Manage massive matrices in R using C++, with support for shared
+        memory and memory-mapped files.
+Version: 3.5
+Date: 2009-04-14
 Author: Michael J. Kane and John W. Emerson
 Maintainer: John W. Emerson <john.emerson@yale.edu>
 Depends: methods, stats, utils
-Suggests: biglm, nws
-Description: Use C++ to create, store, access, and manipulate massive matrices.  Under UNIX, it also supports use of shared memory.
+Suggests: biglm
+Description: Use C++ to create, store, access, and manipulate massive
+        matrices.  Matrices may optionally be allocated to shared
+        memory and/or may use memory-mapped files.
 License: LGPL-3
-Packaged: Sat Jul 26 13:47:00 2008; jay
+Packaged: Tue Apr 14 13:44:29 2009; mjk56
+Repository: CRAN
+Date/Publication: 2009-04-15 08:16:54

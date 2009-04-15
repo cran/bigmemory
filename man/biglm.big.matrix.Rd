@@ -26,7 +26,7 @@ bigglm.big.matrix(formula, data, family=gaussian(), fc=NULL, chunksize=NULL,
   \item{start}{optional starting values for coefficients.  If \code{NULL}, \code{maxit} should be at least 2 as some quantities will not be computed on the first iteration.}
 }
 \details{
-See Thomas Lumley's \pkg{biglm} package for more information;  \code{chunksize} defaults to\cr
+See \pkg{biglm} package for more information;  \code{chunksize} defaults to\cr
 \code{floor(nrow(data)/ncol(data)^2)}.
 }
 \value{

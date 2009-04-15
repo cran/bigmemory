@@ -25,15 +25,20 @@
 setGeneric('colmin', function(x, cols=NULL, na.rm=FALSE)
   standardGeneric('colmin'))
 
+
 setMethod('colmin', signature(x='big.matrix'),
   function(x, cols=NULL, na.rm=FALSE) {
     thistype = .Call("CGetType", x@address)
     if (is.null(cols)) cols = 1:ncol(x)
     if (is.character(cols)) cols <- mmap(cols, colnames(x))
+    if (is.shared(x) && options()$rlock.enabled)
+      lockcols(x, cols, 'r')
     ret = .Call("CMinColmain", as.integer(thistype), x@address, 
       as.double(cols), na.rm)
     if (!is.null(colnames(x))) 
       names(ret) = colnames(x)[cols]
+    if (is.shared(x) && options()$rlock.enabled)
+      unlockcols(x, cols)
     return(ret)
   })
 
@@ -45,37 +50,47 @@ setMethod("min", signature="big.matrix",
 setGeneric('colmax', function(x, cols=NULL, na.rm=FALSE)
   standardGeneric('colmax'))
 
+# TODO: Can this be optimized to go through a set of rows only once?
 setMethod('colmax', signature(x='big.matrix'),
   function(x, cols=NULL, na.rm=FALSE) {
     thistype = .Call("CGetType", x@address)
     if (is.null(cols)) cols = 1:ncol(x)
     if (is.character(cols)) cols <- mmap(cols, colnames(x))
+    if (is.shared(x) && options()$rlock.enabled)
+      lockcols(x, cols, 'r')
     ret = .Call("CMaxColmain", as.integer(thistype), 
       x@address, as.double(cols), na.rm)
 
     if (!is.null(colnames(x))) 
       names(ret) = colnames(x)[cols]
+    if (is.shared(x) && options()$rlock.enabled)
+      unlockcols(x, cols)
     return(ret)
   })
 
 setMethod("max", signature="big.matrix",
   function(x, ..., na.rm=FALSE)
   {
-    return(max(colmax(x, ..., na.rm=na.rm)))
+		return(max(colmax(x, ..., na.rm=na.rm)))
   })
 
 setGeneric('colprod', function(x, cols=NULL, na.rm=FALSE)
   standardGeneric('colprod'))
 
+# TODO: Can this be optimized to go through a set of rows only once?
 setMethod('colprod', signature(x='big.matrix'),
   function(x, cols=NULL, na.rm=FALSE) {
     if (is.null(cols)) cols = 1:ncol(x)
     if (is.character(cols)) cols <- mmap(cols, colnames(x))
     thistype = .Call("CGetType", x@address)
+    if (is.shared(x) && options()$rlock.enabled)
+      lockcols(x, cols, 'r')
     ret = .Call("CProdColmain", as.integer(thistype), x@address, 
       as.double(cols), na.rm)
     if (!is.null(colnames(x))) 
       names(ret) = colnames(x)[cols]
+    if (is.shared(x) && options()$rlock.enabled)
+      unlockcols(x, cols)
     return(ret)
   })
 
@@ -92,10 +107,14 @@ setMethod('colsum', signature(x='big.matrix'),
     if (is.null(cols)) cols = 1:ncol(x)
     if (is.character(cols)) cols <- mmap(cols, colnames(x))
     thistype = .Call("CGetType", x@address)
+    if (is.shared(x) && options()$rlock.enabled)
+      lockcols(x, cols, 'r')
     ret = .Call("CSumColmain", as.integer(thistype), x@address, 
       as.double(cols), na.rm)
     if (!is.null(colnames(x))) 
       names(ret) = colnames(x)[cols]
+    if (is.shared(x) && options()$rlock.enabled)
+      unlockcols(x, cols)
     return(ret)
   })
 
@@ -112,13 +131,14 @@ setMethod('colrange', signature(x='big.matrix'),
   function(x, cols=NULL, na.rm=FALSE) {
     if (is.null(cols)) cols = 1:ncol(x)
     if (is.character(cols)) cols <- mmap(cols, colnames(x))
-    #if (length(cols)==1) 
-    #  return(c(colmin(x,cols=cols,na.rm=na.rm),
-    #           colmax(x,cols=cols,na.rm=na.rm)))
+    if (is.shared(x) && options()$rlock.enabled)
+      lockcols(x, cols, 'r')
     ret = matrix(c(colmin(x,cols=cols,na.rm=na.rm), 
       colmax(x,cols=cols,na.rm=na.rm)), ncol=2)
     colnames(ret) = c('min', 'max')
     if (!is.null(colnames(x))) rownames(ret) = colnames(x)[cols]
+    if (is.shared(x) && options()$rlock.enabled)
+      unlockcols(x, cols)
     return(ret)
   })
 
@@ -132,6 +152,8 @@ setMethod("range", signature="big.matrix",
     #  cols = args$cols
     #  return(colrange(x, cols, na.rm=na.rm))
     #}
+    if (is.shared(x) && options()$rlock.enabled)
+      lockcols(x, 1:ncol(x), 'r')
     rangeMat = colrange(x, ..., na.rm=na.rm)
     return(c(min(rangeMat[,1]), max(rangeMat[,2])))
   })
@@ -144,28 +166,21 @@ setMethod('colmean', signature(x='big.matrix'),
   {
     if (is.null(cols)) cols=1:ncol(x)
     if (is.character(cols)) cols <- mmap(cols, colnames(x))
+    if (is.shared(x) && options()$rlock.enabled)
+      lockcols(x, cols, 'r')
     thistype = .Call("CGetType", x@address)
     ret = .Call("CMeanColmain", as.integer(thistype), x@address, 
       as.double(cols), na.rm)
     if (!is.null(colnames(x))) 
       names(ret) = colnames(x)[cols]
+    if (is.shared(x) && options()$rlock.enabled)
+      unlockcols(x, cols)
     return(ret)
   })
 
 setMethod('mean', signature(x="big.matrix"),
   function(x, ...)
   {
-    #cl = list(...)
-    #colArgIdx = which( names(cl) == 'cols' )
-    #if (length(colArgIdx) == 0)
-    #  cols = 1:ncol(x)
-    #else
-    #  cols = cl$colArgIdx
-    #naRmIdx = which(names(cl) == 'na.rm')
-    #if (length(naRmIdx) == 0)
-    #  na.rm=FALSE
-    #else
-    #  na.rm = cl$na.rm
     return(mean(colmean(x, ...)))
   })
 
@@ -178,11 +193,15 @@ setMethod('colvar', signature(x='big.matrix'),
     if (!is.big.matrix(x)) stop("Unknown type.")
     if (is.null(cols)) cols = 1:ncol(x)
     if (is.character(cols)) cols <- mmap(cols, colnames(x))
+    if (is.shared(x) && options()$rlock.enabled)
+      lockcols(x, cols, 'r')
     thistype = .Call("CGetType", x@address)
     ret = .Call("CVarColmain", as.integer(thistype), x@address, 
       as.double(cols), na.rm)
     if (!is.null(colnames(x))) 
       names(ret) = colnames(x)[cols]
+    if (is.shared(x) && options()$rlock.enabled)
+      unlockcols(x, cols)
     return(ret)
   })
 
@@ -203,10 +222,14 @@ setMethod('ColCountNA', signature(x='big.matrix'),
     if (is.null(cols)) cols = 1:ncol(x)
     if (is.character(cols)) cols <- mmap(cols, colnames(x))
     cols = as.double(cols)
+    if (is.shared(x) && options()$rlock.enabled)
+      lockcols(x, cols, 'r')
     if (max(cols) > ncol(x) | min(cols) < 1) stop("Invalid columns")
     ret = c()
     for (col in cols) ret = c(ret, .Call('ColCountNA', x@address, col))
     if (!is.null(colnames(x))) names(ret) = colnames(x)[cols]
+    if (is.shared(x) && options()$rlock.enabled)
+      unlockcols(x, cols)
     return(ret)
   })
 
@@ -214,6 +237,8 @@ setMethod('summary',
   signature(object='big.matrix'),
   function(object)
   {
+    if (is.shared(x) && options()$rlock.enabled)
+      lockcols(x, 1:ncol(object), 'r')
     rows = 1:ncol(object)
     cn = c('min', 'max', 'mean', "NAs")
     s = matrix(NA, ncol = length(cn), nrow = length(rows))
@@ -223,7 +248,10 @@ setMethod('summary',
     s[,'max'] = colmax(object, rows, na.rm=TRUE)
     s[,'mean'] = colmean(object, rows, na.rm=TRUE)
     s[,"NAs"] = ColCountNA(object, rows)
-    return(data.frame(s))
+    tab=as.table(s)
+    if (is.shared(x) && options()$rlock.enabled)
+      unlockcols(x, 1:ncol(object))
+    return(tab)
   })
 
 GetVarsFromFormula = function(formula, cn)
@@ -260,10 +288,18 @@ biglm.big.matrix = function(formula, data, fc=NULL, chunksize=NULL,
   chunkSeq = seq(1, nrow(data), chunksize)
   lm.bm = NULL
   vars = GetVarsFromFormula(formula, colnames(data))
+	cols = mmap(vars, colnames(data))
+  if (is.shared(data) && options()$rlock.enabled)
+	{
+  	lockcols(data, cols, 'r')
+	}
+	
   factorList = list()
   if (length(fc) > 0) {
     for (i in 1:(length(fc))) 
-      factorList = append(factorList, list(unique(as.numeric(data[,fc[i]]))))
+			# need to sort this.
+      factorList = append(factorList, 
+				list(sort(unique(as.numeric(data[,fc[i]])))))
   }
   names(factorList) = fc
   for (i in 1:(length(chunkSeq)-1)) {
@@ -285,6 +321,10 @@ biglm.big.matrix = function(formula, data, fc=NULL, chunksize=NULL,
       lm.bm = biglm(formula=formula, data=d, weights=weights, sandwich=sandwich)
     else lm.bm = update(lm.bm, d)
   }
+  if (is.shared(data) && options()$rlock.enabled)
+	{
+  	unlockcols(data, cols)
+	}
   return(lm.bm)
 }
 
@@ -301,12 +341,18 @@ bigglm.big.matrix = function( formula, data, family=gaussian(), fc=NULL,
   chunkSeq = seq(1, nrow(data), chunksize)
   lm.bm=NULL
   vars = GetVarsFromFormula(formula, colnames(data))
+	cols = mmap(vars, colnames(data))
+  if (is.shared(data) && options()$rlock.enabled)
+	{
+  	lockcols(data, cols, 'r')
+	}
   factorList = list()
   if (length(fc) > 0)
   {
     for (i in 1:(length(fc)))
     {
-      factorList = append(factorList, list(unique(as.numeric(data[,fc[i]]))))
+      factorList = append(factorList, 
+				list(sort(unique(as.numeric(data[,fc[i]])))))
     }
   }
   names(factorList) = fc
@@ -333,6 +379,10 @@ bigglm.big.matrix = function( formula, data, family=gaussian(), fc=NULL,
     else
       lm.bm = update(lm.bm, d)
   }
+	if (is.shared(data) && options()$rlock.enabled)
+	{
+		unlockcols(data, cols)
+	}
   return(lm.bm)
 }
 

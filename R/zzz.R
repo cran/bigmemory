@@ -37,7 +37,8 @@
 .onLoad <- function(libname, pkgname) {
     library.dynam("bigmemory", pkgname, libname);
     options(rlock.enabled=TRUE)
-    options(bm.print.warning=TRUE)
+    options(bigmemory.print.warning=TRUE)
+    options(bigmemory.typecast.warning=TRUE)
 }
 
 #.noGenerics <- TRUE
@@ -45,5 +46,6 @@
 .onUnload <- function(libpath) {
     library.dynam.unload("bigmemory", libpath);
     options(rlock.enabled=NULL)
-    options(bm.print.warning=NULL)
+    options(bigmemory.print.warning=NULL)
+    options(bigmemory.typecast.warning=NULL)
 }

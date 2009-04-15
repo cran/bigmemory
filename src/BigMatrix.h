@@ -21,83 +21,161 @@
  *  http://www.r-project.org/Licenses/
  */
 
+// proposed new names, InMemorySharedBigMatrix, FileBackedSharedBigMatrix
 #ifndef BIGMATRIX_H
 #define BIGMATRIX_H
 
-#include <Rmath.h>
-#include <Rdefines.h>
-#include <Rinternals.h>
+#include <boost/interprocess/mapped_region.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/noncopyable.hpp>
+#include "MSCexceptions.h"
 #include <string>
 #include <vector>
+
+#include "BigMemoryMutex.h"
+#include "SharedCounter.h"
+
 using namespace std;
 
-#include "ostypedef.h"
-
-typedef vector<string> Names;
-typedef vector<int> Keys;
+typedef vector<std::string> Names;
+typedef boost::interprocess::mapped_region MappedRegion;
+typedef boost::shared_ptr<MappedRegion> MappedRegionPtr;
+typedef vector<MappedRegionPtr> MappedRegionPtrs;
+typedef boost::shared_ptr<BigMemoryMutex> MutexPtr;
+typedef vector<MutexPtr> MutexPtrs;
+typedef vector<unsigned long> Columns;
 //typedef enum {UNKNOWN=0; CHAR=1; SHORT=2; INT=4; DOUBLE=8} BigMatType;
 
-#ifndef WIN
-#include "BMMutex.h"
-typedef vector<MutexSharedMemory> ColumnMutexInfos;
-#endif
-
-class BigMatrix
+class BigMatrix : public boost::noncopyable
 {
   // Constructor and Destructor
   public:
-    BigMatrix();
-    ~BigMatrix();
+    BigMatrix():_ncol(0),_nrow(0),_matType(0),_matrix(NULL),_sepCols(false){};
+    virtual ~BigMatrix(){};
 
-  // Initialization
-    bool init( long numCol, long numRow, int newMatrixType, bool isShared,
-      double init);
-    bool connect(long numCol, long numRow, int connectMatrixType,
-      SEXP colKeys, SEXP colMutexKeys, SEXP shCountKey, SEXP shCountMutexKey );
- 
+    // The next function returns the matrix data.  It will generally be passed
+    // to an appropriate templated function. 
+    void* matrix() {return _matrix;};
+    
     // Accessors
     long ncol() const {return _ncol;};
     long nrow() const {return _nrow;};
     int matrix_type() const {return _matType;};
     bool shared() const {return _shared;}; 
-#ifndef WIN
-    int counter_data_key() const {return _counterInfo.data_key();};
-    int counter_mutex_key() const {return _counterInfo.mutex_key();};
-    ColumnMutexInfos& column_mutex_infos() {return *_pColumnMutexInfos;};
-#endif //WIN
- 
-    void*& matrix() {return _matrix;};
-    Names& column_names() {return *_pColNames;};
-    Names& row_names() {return *_pRowNames;};
+    bool separated_columns() const {return _sepCols;};
+    Names column_names() {return _colNames;};
+    Names row_names() {return _rowNames;};
 
     // Mutators
-    bool remove_column(long col);
-    bool insert_column(long pos, double init, string name);
-    bool SetColumnNames( SEXP newColNames );
-    bool SetRowNames( SEXP newRowNames );
-
-  // Shared Memory 
-#ifndef WIN
-    bool rlock(long col) {return (*_pColumnMutexInfos)[col].rlock();};
-    bool rwlock(long col) {return (*_pColumnMutexInfos)[col].rwlock();};
-    bool unlock(long col) {return (*_pColumnMutexInfos)[col].unlock();};
-#endif //WIN
-
+    bool column_names( Names newColNames )
+    {
+      _colNames=newColNames;
+      return true;
+    };
+    bool row_names( Names newRowNames )
+    {
+      _rowNames=newRowNames;
+      return true;
+    };
+		
+		void* data_ptr() {return _matrix;};
 
   // Data Members
-  private:
+
+
+  protected:
     long _ncol;
     long _nrow;
     int _matType;
     void* _matrix;
     bool _shared;
-    Names* _pColNames;
-    Names* _pRowNames;
-  #ifndef WIN
-    MutexSharedMemory _counterInfo;
-    int* _pShCounter;
-    ColumnMutexInfos* _pColumnMutexInfos;
-  #endif //WIN
+    bool _sepCols;
+    Names _colNames;
+    Names _rowNames;
+};
+ 
+class LocalBigMatrix : public BigMatrix
+{
+  public:
+    LocalBigMatrix() : BigMatrix(){_shared=false;};
+    virtual ~LocalBigMatrix(){destroy();};
+    bool create(const long numRow, const long numCol, const int matrixType, 
+      const bool striped);
+  protected:
+    void destroy();
+// TODO:  IMPLEMENT THESE FUNCTIONS WHEN _sepCols IS true.
+//    bool remove_column(long col);
+//    bool insert_column(long pos, double init, string name);
+};
+
+class SharedBigMatrix : public BigMatrix
+{
+  public:
+//    SharedBigMatrix() : BigMatrix(), _pUsageCount(NULL){_shared=true;};
+    SharedBigMatrix() : BigMatrix() {_shared=true;};
+    virtual ~SharedBigMatrix() {};
+    std::string uuid() const {return _uuid;};
+    std::string shared_name() const {return _sharedName;};
+
+    bool read_lock( Columns &cols );
+    bool read_write_lock( Columns &cols );
+    bool unlock( Columns &cols );
+
+  protected:
+    virtual bool destroy()=0;
+  protected:
+    // According to the documentation, shared memory has kernel or 
+    // filesystem presistence (mechanism exists until the system reboots
+    // or is deleted (kernel) or until the mechanism is explicitly deleted
+    // (filesystem)).  As a result, we are going to need a usage counter
+    // so that when the last object is done with the shared resource, it
+    // can delete the resource.  The destructor will handle deletion
+    // of the shared usage counter.
+    bool create_uuid();
+    bool uuid(const std::string &uuid) {_uuid=uuid; return true;};
+  protected:
+    std::string _uuid;
+    std::string _sharedName;
+    MappedRegionPtrs _dataRegionPtrs;
+    MutexPtrs _mutexPtrs;
+    BigMemoryMutex _mutexLock;
+    SharedCounter _sharedCounter;
+};
+
+class SharedMemoryBigMatrix : public SharedBigMatrix
+{
+  public:
+    SharedMemoryBigMatrix():SharedBigMatrix(){};
+    virtual ~SharedMemoryBigMatrix(){destroy();};
+    virtual bool create( const long numRow, const long numCol, 
+      const int matrixType, const bool sepCols);
+    virtual bool connect( const std::string &uuid, const long numRow, 
+      const long numCol, const int matrixType, const bool sepCols);
+  protected:
+    virtual bool destroy();
+}; 
+
+class FileBackedBigMatrix : public SharedBigMatrix
+{
+  // _sharedName is filename_uuid
+  public:
+    FileBackedBigMatrix():SharedBigMatrix(){};
+    virtual ~FileBackedBigMatrix(){destroy();};
+    virtual bool create( const std::string &fileName, 
+      const std::string &filePath,const long numRow, 
+      const long numCol, const int matrixType, const bool sepCols, 
+      const bool preserve);
+    virtual bool connect( const std::string &sharedName, 
+      const std::string &fileName, const std::string &filePath,
+      const long numRow, const long numCol, const int matrixType, 
+      const bool sepCols, const bool preserve);
+    std::string file_name() const {return _fileName;};
+  protected:
+    virtual bool destroy();
+
+  protected:
+    bool _preserve;
+    std::string _fileName;
 };
 
 #endif // BIGMATRIX_H

@@ -32,7 +32,9 @@
 mmap = function(x, y) {
   if (is.null(x)) return(NULL)
   ans <- match(x, y) #y %in% x
-  if (length(ans) == length(x)) return(ans)
-  else stop("Couldn't find a match to one of the arguments.")
+  if (any(is.na(ans))) stop("Couldn't find a match to one of the arguments.")
+  return(ans)
+  #if (length(ans) == length(x)) return(ans)
+  #else stop("Couldn't find a match to one of the arguments.")
 }
 

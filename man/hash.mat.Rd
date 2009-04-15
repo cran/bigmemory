@@ -10,7 +10,7 @@ hash.mat(x, col)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{x}{a \code{\link{big.matrix}} sorted by column \code{col}.}
+  \item{x}{a \code{\link{big.matrix}}, assumed to be sorted by column \code{col}.}
   \item{col}{an integer or name of the target column; \code{x} must be sorted on this column.}
 }
 \details{

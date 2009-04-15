@@ -21,26 +21,27 @@
  *  http://www.r-project.org/Licenses/
  */
 
+#include "BigMemoryMutex.h"
+#include "util.h"
+
 #include <R.h>
 #include <Rinternals.h>
 #include <Rdefines.h>
-
-#include "BMMutex.h"
 
 extern "C"
 {
 
 void DestroyRWUserMutex(SEXP address)
 {
-//  UserRWMutex *pMutex = (UserRWMutex*)R_ExternalPtrAddr(address);
-  BMMutex *pMutex = reinterpret_cast<BMMutex*>(R_ExternalPtrAddr(address));
+  BigMemoryMutex *pMutex = 
+    reinterpret_cast<BigMemoryMutex*>(R_ExternalPtrAddr(address));
   delete(pMutex);
   R_ClearExternalPtr(address);
 }
 SEXP CreateUserRWMutex()
 {
-  BMMutex *pMutex = new BMMutex();
-  pMutex->create();
+  BigMemoryMutex *pMutex = new BigMemoryMutex;
+  pMutex->init();
   SEXP address = R_MakeExternalPtr(pMutex, R_NilValue, R_NilValue);
   R_RegisterCFinalizerEx(address, (R_CFinalizer_t)DestroyRWUserMutex,
     (Rboolean)TRUE);
@@ -49,10 +50,12 @@ SEXP CreateUserRWMutex()
 
 SEXP ConnectUserRWMutex(SEXP mutexId)
 {
-  BMMutex *pMutex = new BMMutex();
-  if (!pMutex->connect(INTEGER_VALUE(mutexId)))
+  BigMemoryMutex *pMutex = new BigMemoryMutex;
+  if (!pMutex->init( RChar2String(mutexId) ) )
   {
     printf("Failed to connect to mutex!\n");
+    delete pMutex;
+    return R_NilValue;
   }
   SEXP address = R_MakeExternalPtr(pMutex, R_NilValue, R_NilValue);
   R_RegisterCFinalizerEx(address, (R_CFinalizer_t)DestroyRWUserMutex,
@@ -62,27 +65,30 @@ SEXP ConnectUserRWMutex(SEXP mutexId)
 
 SEXP GetUserRWMutexInfo(SEXP address)
 {
-  BMMutex *pMutex = reinterpret_cast<BMMutex*>(R_ExternalPtrAddr(address));
-  SEXP ret = NEW_INTEGER(1);
-  INTEGER_DATA(ret)[0] = pMutex->memid();
-  return(ret);
+  BigMemoryMutex *pMutex = 
+    reinterpret_cast<BigMemoryMutex*>(R_ExternalPtrAddr(address));
+  return(String2RChar(pMutex->resource_name()));
 }
 
+// These functions will return booleans if the mutexes are timed
 void RLockUserRWMutex(SEXP address)
 {
-  BMMutex *pMutex = reinterpret_cast<BMMutex*>(R_ExternalPtrAddr(address));
-  pMutex->rlock();
+  BigMemoryMutex *pMutex = 
+    reinterpret_cast<BigMemoryMutex*>(R_ExternalPtrAddr(address));
+  pMutex->read_lock();
 }
 
 void RWLockUserRWMutex(SEXP address)
 {
-  BMMutex *pMutex = reinterpret_cast<BMMutex*>(R_ExternalPtrAddr(address));
-  pMutex->rwlock();
+  BigMemoryMutex *pMutex = 
+    reinterpret_cast<BigMemoryMutex*>(R_ExternalPtrAddr(address));
+  pMutex->read_write_lock();
 }
 
 void UnlockUserRWMutex(SEXP address)
 {
-  BMMutex *pMutex = reinterpret_cast<BMMutex*>(R_ExternalPtrAddr(address));
+  BigMemoryMutex *pMutex = 
+    reinterpret_cast<BigMemoryMutex*>(R_ExternalPtrAddr(address));
   pMutex->unlock();
 }
 

@@ -17,6 +17,7 @@
 \alias{colvar,big.matrix-method}
 \alias{colsum,big.matrix-method}
 \alias{colprod,big.matrix-method}
+\alias{binit,big.matrix-method}
 \alias{describe,big.matrix-method}
 \alias{dim,big.matrix-method}
 \alias{dimnames<-,big.matrix,list-method}
@@ -37,6 +38,10 @@
 \alias{read.big.matrix,character-method}
 \alias{is.shared,big.matrix-method}
 \alias{is.shared,matrix-method}
+\alias{is.separated,matrix-method}
+\alias{is.separated,big.matrix-method}
+\alias{is.filebacked,matrix-method}
+\alias{is.filebacked,big.matrix-method}
 \alias{typeof,big.matrix-method}
 \alias{mwhich,big.matrix,ANY,ANY,ANY,character-method}
 \alias{mwhich,big.matrix,ANY,ANY,ANY,missing-method}
@@ -45,19 +50,21 @@
 
 \title{Class ``big.matrix''.}
 \description{The \code{big.matrix} class is designed for matrices with 
-elements consisting of the C types double, integer, short, or char.  
+elements of type double, integer, short, or char.  
 A \code{big.matrix} acts much like a traditional R matrix, but helps protect 
 the user from many inadvertant memory-consuming pitfalls of traditional R 
-matrices and data frames.  In Unix, they may also be used in shared memory. }
+matrices and data frames.  The objects may be allocated to shared memory,
+and if file backing is used they may exceed virtual memory in size.  Sadly,
+32-bit R constraints on Windows and many MacOS machines will be a limiting
+factor with file-backed matrices.}
 \section{Objects from the Class}{
 Objects can be created by calls of the form \code{new("big.matrix", ...)}.
-The functions \code{big.matrix()} and 
-\code{shared.big.matrix()} are intended for the user.
+The functions \code{big.matrix()}, \code{shared.big.matrix()},
+and \code{filebacked.big.matrix()} are intended for the user.
 }
 \section{Slots}{
 	 \describe{
     \item{\code{address}:}{Object of class \code{"externalptr"} points to the memory location of the C++ data structure.}
-    \item{\code{type}:}{Object of class \code{"character"} can be one of \code{"double"}, \code{"integer"}, \code{"short"}, or \code{"char"}, using 8, 4, 2, and 1 bytes, respectively, per element.}
   }
 }
 \section{Methods}{
@@ -83,6 +90,7 @@ The functions \code{big.matrix()} and
     \item{colrange}{\code{signature(x = "big.matrix")}: returns the range of each column (or the specified columns, optionally). }
     \item{colsd}{\code{signature(x = "big.matrix")}: returns the standard deviation of each column (or the specified columns, optionally). }
     \item{colvar}{\code{signature(x = "big.matrix")}: returns the variance of each column (or the specified columns, optionally). }
+    \item{binit}{\code{signature(x = "big.matrix")}: calculates 1D and 2D binning.}
     \item{describe}{\code{signature(x = "big.matrix")}: this is only interesting if the \code{big.matrix} is in shared memory. }
     \item{dim}{\code{signature(x = "big.matrix")}: returns the dimension of the \code{big.matrix}. }
     \item{dimnames<-}{\code{signature(x = "big.matrix", value = "list")}: set the row and column names. }
@@ -99,6 +107,7 @@ The functions \code{big.matrix()} and
     \item{tail}{\code{signature(x = "big.matrix")}: returns the last 6 (or \code{n}) rows. }
     \item{write.big.matrix}{\code{signature(bigMat = "big.matrix", fileName = "character")}: produce an ASCII file from the \code{big.matrix}. }
     \item{is.shared}{\code{signature(x = "big.matrix")}: return \code{TRUE} if the \code{big.matrix} is in shared memory.}
+    \item{is.separated}{\code{signature(x = "big.matrix") }: return \code{TRUE} if the \code{big.matrix} is organized as a separated column vectors.}
     \item{typeof}{\code{signature(x = "big.matrix")}: return the type of the atomic elements of the \code{big.matrix}.}
 	 }
 }

@@ -27,13 +27,13 @@ setClass('rw.mutex', representation(address='externalptr'))
 rw.mutex = function()
 {
   address = .Call('CreateUserRWMutex')
-  return(new('UserRWMutex', address=address))
+  return(new('rw.mutex', address=address))
 }
 
 attach.rw.mutex = function(mutexId)
 {
-  address = .Call('ConnectUserRWMutex', as.integer(mutexId))
-  return(new('UserRWMutex', address=address))
+  address = .Call('ConnectUserRWMutex', as.character(mutexId))
+  return(new('rw.mutex', address=address))
 }
 
 setGeneric('describe', function(x) 
@@ -65,9 +65,16 @@ unlock = function(x)
   invisible(NULL)
 }
 
-shared.big.matrix = function(nrow, ncol, type='integer', init=0, 
-  dimnames=NULL) #colnames=NULL, rownames=NULL)
+shared.big.matrix = function(nrow, ncol, type='integer', init=NULL, 
+  dimnames=NULL, separated=FALSE, backingfile=NULL,
+  backingpath=NULL, preserve=TRUE)
 {
+  if (!is.null(backingfile))
+  {
+    return(filebacked.big.matrix(nrow=nrow, ncol=ncol, type=type, init=init, 
+			dimnames=dimnames, separated=separated, backingfile=backingfile, 
+			backingpath=backingpath, preserve=preserve))
+  }
   # It would be nice if init could be a vector or matrix.
   if (nrow < 1 | ncol < 1)
     stop('A big.matrix must have at least one row and one column')
@@ -89,13 +96,74 @@ shared.big.matrix = function(nrow, ncol, type='integer', init=0,
     rownames <- NULL
     colnames <- NULL
   }
-  address = .Call('CCreateSharedMatrix', nrow=as.double(nrow), 
-    ncol=as.double(ncol), colnames=as.character(colnames), 
-    rownames=as.character(rownames), 
-    type=as.integer(typeVal), init=as.double(init))
+  address = .Call('CCreateSharedMatrix', as.double(nrow), 
+    as.double(ncol), as.character(colnames), as.character(rownames), 
+    as.integer(typeVal), as.double(init), as.logical(separated))
+  if (is.null(address))
+  {
+  stop(paste("Error: Shared memory could not be allocated for instance",
+		"of type big.matrix", sep=' '))
+  }
   x=new("big.matrix", address=address)
   if (is.null(x))
+  {
     stop("Error encountered when creating instance of type big.matrix")
+  }
+  return(x)
+}
+
+filebacked.big.matrix=function(nrow, ncol, type='integer', init=NULL,
+  dimnames=NULL, separated=FALSE, backingfile=NULL, backingpath=NULL, 
+	preserve=TRUE)
+{
+  if (nrow < 1 | ncol < 1)
+    stop('A big.matrix must have at least one row and one column')
+  if (nrow < 1 | ncol < 1)
+    stop('A big.matrix must have at least one row and one column')
+
+  typeVal=NULL
+  if (type == 'integer') 
+    typeVal=4
+  if (type == 'double') 
+    typeVal=8
+  if (type == 'short') 
+    typeVal=2
+  if (type == 'char') 
+    typeVal=1
+  if (is.null(typeVal)) stop('invalid type')
+  if (!is.null(dimnames)) {
+    rownames <- dimnames[[1]]
+    colnames <- dimnames[[2]]
+  } else {
+    rownames <- NULL
+    colnames <- NULL
+  }
+  if (is.null(backingfile))
+  {
+    stop("You must specify a backingfile.")
+  }
+  if (is.null(backingpath))
+  {
+    backingpath = ''
+  }
+	else if (substr(backingpath, nchar(backingpath), nchar(backingpath)) != '/' ||
+		substr(backingpath, nchar(backingpath)-1, nchar(backingpath)) != '\\' )
+	{
+		backingpath= paste(backingpath, '/', sep='')
+	}
+  address = .Call('CCreateFileBackedBigMatrix', as.character(backingfile), 
+    as.character(backingpath), as.double(nrow), as.double(ncol), 
+    as.character(colnames), as.character(rownames), as.integer(typeVal), 
+    as.double(init), as.logical(separated), as.logical(preserve))
+  if (is.null(address))
+  {
+    stop("Error encountered when creating instance of type big.matrix")
+  }
+  x=new("big.matrix", address=address)
+  if (is.null(x))
+  {
+    stop("Error encountered when creating instance of type big.matrix")
+  }
   return(x)
 }
 
@@ -108,13 +176,24 @@ setMethod('describe', signature(x='big.matrix'),
 DescribeBigSharedMatrix = function(x) #, file=NULL, path="")
 {
   if (!is.shared(x)) stop("this is not a shared big.matrix")
-
-  ret = append( list(type=typeof(x), nrow=nrow(x), rowNames=rownames(x), 
-      ncol=ncol(x), colNames=colnames(x)), 
-      .Call('GetBigSharedMatrixInfo',x@address) )
+  if (is.shared.memory.big.matrix(x))
+  {
+    ret = list(sharedType='SharedMemory',
+        sharedName=shared.name(x), nrow=nrow(x), ncol=ncol(x),
+        rowNames=rownames(x), colNames=colnames(x), type=typeof(x), 
+        separated=is.separated(x))
+  }
+  else
+  {
+    ret = list(sharedType='FileBacked',
+        sharedName=shared.name(x), fileName=file.name(x),
+        nrow=nrow(x), ncol=ncol(x),
+        rowNames=rownames(x), colNames=colnames(x), type=typeof(x), 
+        separated=is.separated(x))
+  }
 }
 
-attach.big.matrix = function(obj)
+attach.big.matrix = function(obj, backingpath='')
 {
   if (is.list(obj)) 
     info <- obj
@@ -131,10 +210,19 @@ attach.big.matrix = function(obj)
   if (info$type == 'char') 
     typeLength=1
   if (is.null(typeLength)) stop('invalid type')
-
-  address = .Call('CAttachSharedMatrix', info$ncol, info$colNames, 
-    info$nrow, info$rowNames, as.integer(typeLength), 
-    info$colKeys, info$colMutexKeys, info$shCountKey, info$shCountMutexKey)
+  if (info$sharedType == 'SharedMemory')
+  {
+    address = .Call('CAttachSharedBigMatrix', info$sharedName, info$nrow, 
+      info$ncol, as.character(info$rowNames), as.character(info$colNames), 
+      as.integer(typeLength), info$separated)
+  }
+  else
+  {
+    address = .Call('CAttachFileBackedBigMatrix', info$sharedName, 
+      info$fileName, backingpath, info$nrow, info$ncol, 
+      as.character(info$rowNames), as.character(info$colNames), 
+      as.integer(typeLength), info$separated)
+  }
   if (!is.null(address)) 
     ans <- new('big.matrix', address=address)
   else 
@@ -142,106 +230,40 @@ attach.big.matrix = function(obj)
   return(ans)  
 }
 
-# Currently, this is not being exported.  It needs to be tested.
-pack.shared.objects=function(objects, file="")
-{
-  if (!(length(objects)==1 || class(objects)=='list'))
+setGeneric('is.shared.memory.big.matrix', function(x) 
+  standardGeneric('is.shared.memory.big.matrix'))
+
+setMethod('is.shared.memory.big.matrix', signature(x='big.matrix'),
+  function(x)
   {
-    stop("You must provide an element or list of elements to pack.")
-  }
-  c1 = match.call()
-  packVars = deparse(c1$objects)
-  packVars = unlist(strsplit(as.character(packVars), "\\("))[2]
-  packVars = unlist(strsplit(as.character(packVars), "\\)"))[1]
-  packVars = unlist(strsplit(as.character(packVars), ","))
-  packVars = gsub('\\s+', '', packVars, perl=TRUE)
-  packInfo=list()
-  for (i in 1:length(objects))
+    return(.Call('IsSharedMemoryBigMatrix', x@address))
+  })
+
+setGeneric('is.file.backed.big.matrix', function(x)
+  standardGeneric('is.file.backed.big.matrix'))
+
+setMethod('is.file.backed.big.matrix', signature(x='big.matrix'),
+  function(x)
   {
-    if (class(objects[[i]]) == 'big.matrix')
-    {
-      if (!is.shared(objects[[i]]))
-        stop("You may not pack a big.matrix that is not shared")
-      packInfo = append(packInfo, list(append(list(class=class(objects[[i]]), 
-        varName=packVars[i]), describe(objects[[i]]))))
-    }
-    if (class(objects[[i]]) == 'rw.mutex')
-    {
-      packInfo = append(packInfo, list(append(list(class=class(objects[[i]]), 
-        varName=packVars[i]), list(keys=describe(objects[[i]])))))
-    }
-  }
-  dput(packInfo, file)
-  invisible(NULL)
-}
+    return(.Call('IsFileBackedBigMatrix', x@address))
+  })
 
-# Currently, this is not being exported.  It needs to be tested.
-unpack.shared.objects=function(file, global=TRUE)
-{
-  shInfo = dget(file)
-  ret = list()
-  for (i in 1:length(shInfo))
-  {
-    info = shInfo[[i]]
-    if (info$class == 'UserRWMutex')
-    {
-      if (global==TRUE) {
-        assign(info$varName, attach.rw.mutex(info$keys[1]), env=.GlobalEnv)
-      } 
-      else 
-      {
-        s = paste('ret = append(ret,list(', info$varName,
-          '=ConnectUserRWMutex(info$keys[1])))')
-        eval(parse(text=s))
-      }
-    }
-    if (info$class == 'big.matrix')
-    {
-        AttachSharedMatrix <- NA
-        if (info$type == 'integer') 
-          AttachSharedMatrix <- "CAttachIntSharedMatrix"
-        if (info$type == 'double') 
-          AttachSharedMatrix <- "CAttachDoubleSharedMatrix"
-        if (info$type == 'short') 
-          AttachSharedMatrix <- "CAttachShortSharedMatrix"
-        if (info$type == 'char') 
-          AttachSharedMatrix <- "CAttachCharSharedMatrix"
-        if (is.na(AttachSharedMatrix)) 
-          stop('invalid type')
-
-        address = .Call(AttachSharedMatrix, info$ncol, info$colNames, 
-          info$nrow, info$rowNames, info$colKeys, info$colMutexKeys, 
-          info$shCountKey, info$shCountMutexKey)
-
-      if (global==TRUE) 
-      {
-        assign(info$varName, new('big.matrix', address=address, type=info$type),
-          env=.GlobalEnv)
-      } 
-      else 
-      {
-        s = paste('ret = append(ret, list(', info$varName,
-          '=new("big.matrix", address=address, type=info$type)))')
-        eval(parse(text=s))
-      }
-    }
-  }
-  if (global==FALSE)
-    return(ret)
-  invisible(NULL)
-}
-
-setGeneric('lockcols', function(x, cols, lockType='r') 
+setGeneric('lockcols', function(x, cols=NULL, lockType='r') 
   standardGeneric('lockcols'))
 
 # Note: this only supports column indices.  mmap needs to be called
 # if we want to lock columns by name.
 setMethod('lockcols', signature(x='big.matrix', lockType='character'),
-  function(x, cols, lockType='r')
+  function(x, cols=NULL, lockType='r')
   {
+    if(is.null(cols))
+      cols = 1:ncol(x)
+    else if (is.character(cols)) 
+      cols <- mmap(cols, colnames(x))
+		cols = abs(cols)
+		cols = cols[ cols >= 1 & cols <= ncol(x)]
     if (lockType != 'r' & lockType != 'w')
       stop('Unknow lock type')
-    func=''
     if (lockType == 'r')
     {
       .Call('BigMatrixRLock', x@address, as.double(cols))
@@ -254,27 +276,39 @@ setMethod('lockcols', signature(x='big.matrix', lockType='character'),
     }
   })
 
-setGeneric('unlockcols', function(x, cols) standardGeneric('unlockcols'))
+setGeneric('shared.name', function(x) standardGeneric('shared.name'))
+
+setMethod('shared.name', signature(x='big.matrix'),
+  function(x)
+  {
+    if (!is.shared(x))
+      stop("The specified argument is not shared.")
+    return(.Call('SharedName', x@address))
+  })
+
+setGeneric('file.name', function(x) standardGeneric('file.name'))
+
+setMethod('file.name', signature(x='big.matrix'),
+  function(x)
+  {
+    if (!is.file.backed.big.matrix(x))
+    {
+      stop("The argument is not a file backed big.matrix.")
+    }
+    return(.Call('FileName', x@address))
+  })
+
+setGeneric('unlockcols', function(x, cols=NULL) standardGeneric('unlockcols'))
 
 setMethod('unlockcols', signature(x='big.matrix'),
-  function(x, cols)
+  function(x, cols=NULL)
   {
+    if (is.null(cols))
+      cols = 1:ncol(x)
+    else if (is.character(cols)) 
+      cols <- mmap(cols, colnames(x))
+		cols = abs(cols)
+		cols = cols[ cols >= 1 & cols <= ncol(x)]
     .Call('BigMatrixRelease', x@address, as.double(cols))
     invisible(NULL)
   })
-
-shared.deepcopy <- function(x) 
-{
-  if (exists("shared.big.matrix", mode="function")) 
-  {
-    y <- shared.big.matrix(nrow=nrow(x), ncol=ncol(x),
-                    type=typeof(x), dimnames=list(rownames(x), colnames(x)))
-    for (i in 1:ncol(x)) y[,i] <- x[,i]
-  } 
-  else 
-  {
-    stop("This version does not support shared matrices.\n")
-  }
-  return(y)
-}
-

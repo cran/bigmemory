@@ -1,11 +1,14 @@
 
-#include <math.h>
+#include <iostream> // hack to make sure we are using the right "length" 
+                    // function
+#include "BigMatrix.h"
+#include "BigMatrixAccessor.hpp"
+#include "BigMemoryDefines.h"
+#include "isna.hpp"
 
+#include <math.h>
 #include <R.h>
 #include <Rdefines.h>
-
-#include "bm_defines.h"
-#include "BigMatrix.h"
 
 // ---------------------------------------------------------------------------
 // NEW
@@ -39,14 +42,15 @@ Rboolean tmin(T *x, long n, int *value, Rboolean narm, T NA_VALUE)
   Rboolean updated = (Rboolean)FALSE;
 
   for (i = 0; i < n; i++) {
-    if (x[i] != NA_VALUE && !isnan((double)x[i])) {
+//    if (x[i] != NA_VALUE && !isnan((double)x[i])) {
+    if (!isna(x[i])) {
       if (!updated || s > x[i]) {
         s = x[i];
         if (!updated) updated = (Rboolean)TRUE;
       }
     }
     else if (!narm) {
-      *value = NA_INTEGER;
+      *value = NA_VALUE;
       return((Rboolean)TRUE);
     }
   }
@@ -89,13 +93,14 @@ Rboolean tmax(T *x, long n, int *value, Rboolean narm, T NA_VALUE)
   Rboolean updated = (Rboolean)FALSE;
 
   for (i = 0; i < n; i++) {
-    if (x[i] != NA_VALUE) {
+//    if (x[i] != NA_VALUE) {
+    if (!isna(x[i])) {
       if (!updated || s < x[i]) {
         s = x[i];
         if(!updated) updated = (Rboolean)TRUE;
       }
     } else if (!narm) {
-      *value = NA_INTEGER;
+      *value = NA_VALUE;
       return((Rboolean)TRUE);
     }
   }
@@ -133,12 +138,12 @@ Rboolean tmax(double *x, int n, double *value, Rboolean narm,
 template<typename T>
 Rboolean tsum(T *x, long n, double *value, Rboolean narm, T NA_VALUE)
 {
-  double s = 0.0;
+  LDOUBLE s = 0.0;
   long i;
   Rboolean updated = (Rboolean)FALSE;
 
   for (i = 0; i < n; i++) {
-    if (x[i] != NA_VALUE) {
+    if (!isna(x[i])) {
       if (!updated) updated = (Rboolean)TRUE;
       s += x[i];
     } else if (!narm) {
@@ -176,12 +181,12 @@ Rboolean tsum(double *x, int n, double *value, Rboolean narm,
 template<typename T>
 Rboolean tprod(T *x, int n, double *value, Rboolean narm, T NA_VALUE)
 {
-  double s = 1.0;
+  LDOUBLE s = 1.0;
   long i;
   Rboolean updated = (Rboolean)FALSE;
 
   for (i = 0; i < n; i++) {
-    if (x[i] != NA_VALUE) {
+    if (!isna(x[i])) {
       s *= x[i];
       if(!updated) updated = (Rboolean)TRUE;
     }
@@ -229,7 +234,8 @@ Rboolean tmean(T *x, long n, double *value, Rboolean narm, T NA_VALUE)
   Rboolean updated = (Rboolean)TRUE;
 
   for (i = 0; i < n; i++) {
-    if (x[i] != NA_VALUE) s += x[i];
+    if (!isna(x[i])) 
+			s += x[i];
     else if (!narm) {
       *value = NA_REAL;
       return(updated);
@@ -282,7 +288,7 @@ Rboolean tvar(T *x, long n, double *value, Rboolean narm, T NA_VALUE)
   double addNum;
   for (i=0; i < n; ++i) {
     addNum = (double)x[i];
-    if (addNum == NA_VALUE || isnan(addNum)) {
+    if (isna(addNum)) {
       if (narm) continue;
       else {
         *value = NA_REAL;
@@ -300,11 +306,23 @@ Rboolean tvar(T *x, long n, double *value, Rboolean narm, T NA_VALUE)
 
 #define CALL_FUN(fun)                                                     \
   BigMatrix *pMat = (BigMatrix*)R_ExternalPtrAddr(bigMatrixAddr);         \
-  dataT **Mat = (dataT**) pMat->matrix();                                 \
-  long i;                                                                 \
-  for (i=0; i < nCols; ++i) {                                             \
-    fun(Mat[(long)pCols[i]-1], pMat->nrow(), &pRet[i],                    \
+  if (pMat->separated_columns())                                          \
+  {                                                                       \
+    SepBigMatrixAccessor<dataT> Mat(*pMat);                               \
+    long i=0;                                                             \
+    for (i=0; i < nCols; ++i) {                                           \
+      fun(Mat[(long)pCols[i]-1], pMat->nrow(), &pRet[i],                  \
                   (Rboolean)LOGICAL_VALUE(narm), NA_VALUE);               \
+    }                                                                     \
+  }                                                                       \
+  else                                                                    \
+  {                                                                       \
+    BigMatrixAccessor<dataT> Mat(*pMat);                                  \
+    long i=0;                                                             \
+    for (i=0; i < nCols; ++i) {                                           \
+      fun(Mat[(long)pCols[i]-1], pMat->nrow(), &pRet[i],                  \
+                    (Rboolean)LOGICAL_VALUE(narm), NA_VALUE);             \
+    }                                                                     \
   }
 
 template<typename dataT, typename retT>
