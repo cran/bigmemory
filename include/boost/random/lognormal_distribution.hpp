@@ -7,7 +7,7 @@
  *
  * See http://www.boost.org for most recent version including documentation.
  *
- * $Id: lognormal_distribution.hpp 41369 2007-11-25 18:07:19Z bemandawes $
+ * $Id: lognormal_distribution.hpp 49314 2008-10-13 09:00:03Z johnmaddock $
  *
  * Revision history
  *  2001-02-18  moved to individual header files
@@ -16,7 +16,7 @@
 #ifndef BOOST_RANDOM_LOGNORMAL_DISTRIBUTION_HPP
 #define BOOST_RANDOM_LOGNORMAL_DISTRIBUTION_HPP
 
-#include <cmath>      // std::exp, std::sqrt
+#include <boost/config/no_tr1/cmath.hpp>      // std::exp, std::sqrt
 #include <cassert>
 #include <iostream>
 #include <boost/limits.hpp>

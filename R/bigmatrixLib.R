@@ -237,8 +237,8 @@ setMethod('summary',
   signature(object='big.matrix'),
   function(object)
   {
-    if (is.shared(x) && options()$rlock.enabled)
-      lockcols(x, 1:ncol(object), 'r')
+    if (is.shared(object) && options()$rlock.enabled)
+      lockcols(object, 1:ncol(object), 'r')
     rows = 1:ncol(object)
     cn = c('min', 'max', 'mean', "NAs")
     s = matrix(NA, ncol = length(cn), nrow = length(rows))
@@ -249,8 +249,8 @@ setMethod('summary',
     s[,'mean'] = colmean(object, rows, na.rm=TRUE)
     s[,"NAs"] = ColCountNA(object, rows)
     tab=as.table(s)
-    if (is.shared(x) && options()$rlock.enabled)
-      unlockcols(x, 1:ncol(object))
+    if (is.shared(object) && options()$rlock.enabled)
+      unlockcols(object, 1:ncol(object))
     return(tab)
   })
 

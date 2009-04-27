@@ -17,13 +17,15 @@ may be in-memory (shared or not), or file backed (which is always shareable).
 \usage{
 big.matrix(nrow, ncol, type = "integer", init = NULL, dimnames = NULL,
            separated = FALSE, shared = FALSE, 
-           backingfile = NULL, backingpath = NULL, preserve = TRUE)
+           backingfile = NULL, backingpath = NULL, descriptorfile = NULL, preserve = TRUE)
 shared.big.matrix(nrow, ncol, type = "integer", init = NULL, dimnames = NULL,
-           separated = FALSE, backingfile = NULL, backingpath = NULL, preserve = TRUE)
+           separated = FALSE, backingfile = NULL, backingpath = NULL, descriptorfile = NULL,
+           preserve = TRUE)
 filebacked.big.matrix(nrow, ncol, type = "integer", init = NULL, dimnames = NULL,
-           separated = FALSE, backingfile = NULL, backingpath = NULL, preserve = TRUE)
+           separated = FALSE, backingfile = NULL, backingpath = NULL, descriptorfile = NULL,
+           preserve = TRUE)
 as.big.matrix(x, type = NULL, separated = FALSE, shared = FALSE,
-              backingfile = NULL, backingpath = NULL, preserve = TRUE)
+              backingfile = NULL, backingpath = NULL, descriptorfile = NULL, preserve = TRUE)
 is.big.matrix(x)
 is.separated(x)
 is.shared(x)
@@ -40,6 +42,7 @@ is.filebacked(x)
   \item{shared}{\code{TRUE} if the \code{big.matrix} should be allocated to shared memory.}
   \item{backingfile}{the root name for the file(s) for the cache of \code{x}.}
   \item{backingpath}{the path to the directory containing the file backing cache.}
+  \item{descriptorfile}{the name of the file to hold the filebacked description, for subsequent use with \code{\link{attach.big.matrix}}; if NULL, the \code{backingfile} is used as the root.  The descriptor file is placed in the same directory as the backing files.}
   \item{preserve}{if this is a filebacked \code{big.matrix}, it is preserved, by default, even after the end of the R session unless this option is set to \code{FALSE}.}
 }
 \details{

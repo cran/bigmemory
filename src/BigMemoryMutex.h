@@ -3,7 +3,6 @@
 #include <string>
 #include <boost/noncopyable.hpp>
 #include <boost/interprocess/sync/named_upgradable_mutex.hpp>
-#include "MSCexceptions.h"
 
 #include "SharedCounter.h"
 

@@ -3,7 +3,6 @@
 
 #include <string>
 #include <boost/interprocess/mapped_region.hpp>
-#include "MSCexceptions.h"
 
 // Note: Shared Counters are not mutex protected.
 class SharedCounter

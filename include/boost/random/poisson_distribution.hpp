@@ -7,14 +7,14 @@
  *
  * See http://www.boost.org for most recent version including documentation.
  *
- * $Id: poisson_distribution.hpp 41369 2007-11-25 18:07:19Z bemandawes $
+ * $Id: poisson_distribution.hpp 49314 2008-10-13 09:00:03Z johnmaddock $
  *
  */
 
 #ifndef BOOST_RANDOM_POISSON_DISTRIBUTION_HPP
 #define BOOST_RANDOM_POISSON_DISTRIBUTION_HPP
 
-#include <cmath>
+#include <boost/config/no_tr1/cmath.hpp>
 #include <cassert>
 #include <iostream>
 #include <boost/limits.hpp>

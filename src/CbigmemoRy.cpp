@@ -1766,7 +1766,18 @@ SEXP CCreateFileBackedBigMatrix(SEXP fileName, SEXP filePath, SEXP row,
       }
     }
   }
+  SEXP address = R_MakeExternalPtr( dynamic_cast<BigMatrix*>(pMat),
+    R_NilValue, R_NilValue);
+  R_RegisterCFinalizerEx(address, (R_CFinalizer_t) CDestroySharedMatrix, 
+      (Rboolean) TRUE);
+  return address;
+}
 
+/*
+SEXP GetDescriptorString(SEXP address)
+{
+  SharedBigMatrix *pMat = 
+    reinterpret_cast<SharedBigMatrix*>(R_ExternalPtrAddr(address));
   // JJJJJJJJ Do automatic writing of the description.
   // At this point, write out the description to the file: fn+"descriptor"  ?
   // Example format:
@@ -1774,7 +1785,6 @@ SEXP CCreateFileBackedBigMatrix(SEXP fileName, SEXP filePath, SEXP row,
   //                fileName = "example.bin", nrow = 3, ncol = 3, rowNames = NULL,
   //                colNames = NULL, type = "integer", separated = FALSE), .Names = c("sharedType",
   //           "sharedName", "fileName", "nrow", "ncol", "rowNames", "colNames", "type", "separated"))
-  ofstream fp;
   string fnd;
   fnd = fn + ".descriptor";
   fp.open(fnd.c_str(), ios::out);
@@ -1825,13 +1835,8 @@ SEXP CCreateFileBackedBigMatrix(SEXP fileName, SEXP filePath, SEXP row,
   fp.close();
 
   // END JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ
-
-  SEXP address = R_MakeExternalPtr( dynamic_cast<BigMatrix*>(pMat),
-    R_NilValue, R_NilValue);
-  R_RegisterCFinalizerEx(address, (R_CFinalizer_t) CDestroySharedMatrix, 
-      (Rboolean) TRUE);
-  return address;
 }
+*/
 
 SEXP CAttachSharedBigMatrix(SEXP sharedName, SEXP rows, SEXP cols, 
   SEXP rowNames, SEXP colNames, SEXP typeLength, SEXP separated)

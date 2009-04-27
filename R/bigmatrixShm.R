@@ -21,6 +21,32 @@
 #  *  http://www.r-project.org/Licenses/
 #  */
 
+# Following the R convention we are going to assume Unix directory 
+# separators '/' as opposed to the Windows convention '\'.
+fix_backingpath = function(backingpath)
+{
+  if (is.null(backingpath) || backingpath == '')
+  {
+    backingpath = ''
+		return(backingpath)
+  }
+	else if (substr(backingpath, nchar(backingpath), nchar(backingpath))!='/')
+	{
+		if (is.na(file.info(backingpath)$isdir))
+		{
+			stop("The supplied backing path does not exist.")
+		}
+		backingpath= paste(backingpath, '/', sep='')
+	}
+	else 
+	{
+		if ( is.na(file.info( substr(backingpath, 1, nchar(backingpath)-1) )) )
+		{
+			stop( "The supplied backing path does not exist.")
+		}
+	}
+	return(backingpath)
+}
 
 setClass('rw.mutex', representation(address='externalptr'))
 
@@ -67,13 +93,14 @@ unlock = function(x)
 
 shared.big.matrix = function(nrow, ncol, type='integer', init=NULL, 
   dimnames=NULL, separated=FALSE, backingfile=NULL,
-  backingpath=NULL, preserve=TRUE)
+  backingpath=NULL, descriptorfile=NULL, preserve=TRUE)
 {
   if (!is.null(backingfile))
   {
     return(filebacked.big.matrix(nrow=nrow, ncol=ncol, type=type, init=init, 
 			dimnames=dimnames, separated=separated, backingfile=backingfile, 
-			backingpath=backingpath, preserve=preserve))
+			backingpath=backingpath, descriptorfile=descriptorfile, 
+      preserve=preserve))
   }
   # It would be nice if init could be a vector or matrix.
   if (nrow < 1 | ncol < 1)
@@ -114,7 +141,7 @@ shared.big.matrix = function(nrow, ncol, type='integer', init=NULL,
 
 filebacked.big.matrix=function(nrow, ncol, type='integer', init=NULL,
   dimnames=NULL, separated=FALSE, backingfile=NULL, backingpath=NULL, 
-	preserve=TRUE)
+  descriptorfile=NULL, preserve=TRUE)
 {
   if (nrow < 1 | ncol < 1)
     stop('A big.matrix must have at least one row and one column')
@@ -138,20 +165,13 @@ filebacked.big.matrix=function(nrow, ncol, type='integer', init=NULL,
     rownames <- NULL
     colnames <- NULL
   }
-  if (is.null(backingfile))
-  {
-    stop("You must specify a backingfile.")
-  }
-  if (is.null(backingpath))
-  {
-    backingpath = ''
-  }
-	else if (substr(backingpath, nchar(backingpath), nchar(backingpath)) != '/' ||
-		substr(backingpath, nchar(backingpath)-1, nchar(backingpath)) != '\\' )
-	{
-		backingpath= paste(backingpath, '/', sep='')
-	}
-  address = .Call('CCreateFileBackedBigMatrix', as.character(backingfile), 
+#  if (is.null(backingfile))
+#  {
+#    stop("You must specify a backingfile.")
+#  }
+	backingpath = fix_backingpath(backingpath)
+
+	address = .Call('CCreateFileBackedBigMatrix', as.character(backingfile), 
     as.character(backingpath), as.double(nrow), as.double(ncol), 
     as.character(colnames), as.character(rownames), as.integer(typeVal), 
     as.double(init), as.logical(separated), as.logical(preserve))
@@ -164,6 +184,13 @@ filebacked.big.matrix=function(nrow, ncol, type='integer', init=NULL,
   {
     stop("Error encountered when creating instance of type big.matrix")
   }
+	if (is.null(descriptorfile))
+	{
+		warning(paste("A descriptor file has not been specified.  ",
+			"A descriptor named ", backingfile, ".desc will be created.", sep=''))
+		descriptorfile = paste( backingfile, ".desc", sep='' )
+	}
+	dput( describe(x), paste(backingpath, descriptorfile, sep='') )
   return(x)
 }
 
@@ -209,7 +236,9 @@ attach.big.matrix = function(obj, backingpath='')
     typeLength=2
   if (info$type == 'char') 
     typeLength=1
-  if (is.null(typeLength)) stop('invalid type')
+  if (is.null(typeLength)) 
+		stop('invalid type')
+	backingpath = fix_backingpath(backingpath)
   if (info$sharedType == 'SharedMemory')
   {
     address = .Call('CAttachSharedBigMatrix', info$sharedName, info$nrow, 
@@ -226,7 +255,7 @@ attach.big.matrix = function(obj, backingpath='')
   if (!is.null(address)) 
     ans <- new('big.matrix', address=address)
   else 
-    stop("Fatal error in attach: shared big.matrix does not exist.")
+    stop("Fatal error in attach: shared big.matrix could not be attached.")
   return(ans)  
 }
 
