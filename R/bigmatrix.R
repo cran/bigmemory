@@ -26,7 +26,7 @@ setClass("big.matrix", representation(address='externalptr'))
 
 big.matrix = function(nrow, ncol, type='integer', init=NULL, dimnames=NULL,
                       separated=FALSE, shared=FALSE, backingfile=NULL, 
-											backingpath=NULL, preserve=TRUE)
+											backingpath=NULL, descriptorfile=NULL, preserve=TRUE)
 {
   # It would be nice if init could be a vector or matrix.
   if (nrow < 1 | ncol < 1)
@@ -60,24 +60,24 @@ big.matrix = function(nrow, ncol, type='integer', init=NULL, dimnames=NULL,
   }
   else
   {
-#		if (!is.null(backingpath) &&
-#			substr(backingfile, nchar(backingfile), nchar(backingfile)) != '/' ||
-#			substr(backingfile, nchar(backingfile)-1, nchar(backingfile)) != '\\' )
-#		{
-#			backingfile = paste(backingfile, '/', sep='')
-#		}
-		print("backing file is")
-		print(backingfile)
+		if (!is.null(backingpath) &&
+			substr(backingpath, nchar(backingpath), nchar(backingpath)) != '/' ||
+			substr(backingpath, nchar(backingpath)-1, nchar(backingpath)) != '\\' )
+		{
+			backingfile = paste(backingpath, '/', sep='')
+		}
     return(shared.big.matrix(nrow=nrow, ncol=ncol, type=type, init=init, 
 			dimnames=dimnames, separated=separated, backingfile=backingfile, 
-			backingpath=backingpath, preserve=preserve))
+			backingpath=backingpath, descriptorfile=descriptorfile, 
+      preserve=preserve))
   }
 }
 
 is.big.matrix <- function(x) return(class(x) == "big.matrix")
 
 as.big.matrix <- function(x, type = NULL, separated = FALSE,
-  shared=FALSE, backingfile=NULL, backingpath=NULL, preserve=TRUE)
+  shared=FALSE, backingfile=NULL, backingpath=NULL, descriptorfile=NULL,
+  preserve=TRUE)
 {
   if (is.vector(x)) {
     x <- matrix(x, length(x), 1)
@@ -85,6 +85,11 @@ as.big.matrix <- function(x, type = NULL, separated = FALSE,
   }
   if (!is.matrix(x)) 
 		stop('argument is not a matrix; perhaps it is a data frame?')
+	if (!is.numeric(x))
+	{
+		warning("Casting matrix to numeric type")
+		x = matrix( as.numeric(x), nrow=nrow(x), dimnames=dimnames(x) )
+	}
 	if (is.null(type))
 	{
 		type = typeof(x)
@@ -92,16 +97,17 @@ as.big.matrix <- function(x, type = NULL, separated = FALSE,
   
   if (type=="integer" | type=="double" | type=="short" | type=="char") 
   {
-    if (!shared & is.null(backingpath))
-    {
-      y <- big.matrix(nrow=nrow(x), ncol=ncol(x), type=type, init=NULL, 
-				dimnames=dimnames(x), separated=separated)
-    }
-    else 
+    if (shared | !is.null(backingfile))
     {
       y = shared.big.matrix(nrow=nrow(x), ncol=ncol(x), type=type, init=NULL, 
 				dimnames=dimnames(x), separated=separated, backingfile=backingfile, 
-				backingpath=backingpath, preserve=preserve)
+				backingpath=backingpath, descriptorfile=descriptorfile,
+        preserve=preserve)
+    }
+		else
+    {
+      y <- big.matrix(nrow=nrow(x), ncol=ncol(x), type=type, init=NULL, 
+				dimnames=dimnames(x), separated=separated)
     }
     y[1:nrow(x),1:ncol(x)] <- x
     junk <- gc() 
@@ -254,10 +260,11 @@ SetFunction.bm = function(x, i, j, value)
   }
   # Note: we pass doubles as doubles, but anything else as integers.
   if (typeof(x) == 'double') {
-    func <- "SetMatrixElements"
-    .Call("SetMatrixElements", x@address, as.double(j), as.double(i), as.double(value))
+    .Call("SetMatrixElements", x@address, as.double(j), as.double(i), 
+			as.double(value))
   } else {
-    .Call("SetMatrixElements", x@address, as.double(j), as.double(i), as.integer(value))
+    .Call("SetMatrixElements", x@address, as.double(j), as.double(i), 
+			as.integer(value))
   }
   if (is.shared(x))
   {

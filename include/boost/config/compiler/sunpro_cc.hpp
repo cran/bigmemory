@@ -74,6 +74,11 @@
 //
 #define BOOST_NO_TWO_PHASE_NAME_LOOKUP
 #define BOOST_NO_ADL_BARRIER
+#define BOOST_NO_INITIALIZER_LISTS
+
+#if(__SUNPRO_CC >= 0x590) 
+#  define BOOST_HAS_LONG_LONG
+#endif
 
 
 #define BOOST_COMPILER "Sun compiler version " BOOST_STRINGIZE(__SUNPRO_CC)

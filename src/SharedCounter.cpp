@@ -1,5 +1,4 @@
 #include <boost/interprocess/shared_memory_object.hpp>
-#include "MSCexceptions.h"
 #include "SharedCounter.h"
 
 bool SharedCounter::reset()

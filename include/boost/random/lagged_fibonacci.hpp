@@ -7,7 +7,7 @@
  *
  * See http://www.boost.org for most recent version including documentation.
  *
- * $Id: lagged_fibonacci.hpp 41369 2007-11-25 18:07:19Z bemandawes $
+ * $Id: lagged_fibonacci.hpp 49314 2008-10-13 09:00:03Z johnmaddock $
  *
  * Revision history
  *  2001-02-18  moved to individual header files
@@ -16,11 +16,11 @@
 #ifndef BOOST_RANDOM_LAGGED_FIBONACCI_HPP
 #define BOOST_RANDOM_LAGGED_FIBONACCI_HPP
 
-#include <cmath>
+#include <boost/config/no_tr1/cmath.hpp>
 #include <iostream>
 #include <algorithm>     // std::max
 #include <iterator>
-#include <cmath>         // std::pow
+#include <boost/config/no_tr1/cmath.hpp>         // std::pow
 #include <boost/config.hpp>
 #include <boost/limits.hpp>
 #include <boost/cstdint.hpp>

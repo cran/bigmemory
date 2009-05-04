@@ -28,7 +28,6 @@
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/noncopyable.hpp>
-#include "MSCexceptions.h"
 #include <string>
 #include <vector>
 
