@@ -214,9 +214,9 @@ setMethod('colsd', signature(x='big.matrix'),
     return(sqrt(colvar(x, cols=cols, na.rm=na.rm)))
   })
 
-setGeneric('ColCountNA', function(x, cols=NULL) standardGeneric('ColCountNA'))
+setGeneric('colna', function(x, cols=NULL) standardGeneric('colna'))
 
-setMethod('ColCountNA', signature(x='big.matrix'),
+setMethod('colna', signature(x='big.matrix'),
   function(x, cols=NULL)
   {
     if (is.null(cols)) cols = 1:ncol(x)
@@ -247,7 +247,7 @@ setMethod('summary',
     s[,'min'] = colmin(object, rows, na.rm=TRUE)
     s[,'max'] = colmax(object, rows, na.rm=TRUE)
     s[,'mean'] = colmean(object, rows, na.rm=TRUE)
-    s[,"NAs"] = ColCountNA(object, rows)
+    s[,"NAs"] = colna(object, rows)
     tab=as.table(s)
     if (is.shared(object) && options()$rlock.enabled)
       unlockcols(object, 1:ncol(object))

@@ -304,25 +304,29 @@ Rboolean tvar(T *x, long n, double *value, Rboolean narm, T NA_VALUE)
 
 // This CALL_FUN macro really just does an apply on the specified columns.
 
-#define CALL_FUN(fun)                                                     \
-  BigMatrix *pMat = (BigMatrix*)R_ExternalPtrAddr(bigMatrixAddr);         \
-  if (pMat->separated_columns())                                          \
-  {                                                                       \
-    SepBigMatrixAccessor<dataT> Mat(*pMat);                               \
-    long i=0;                                                             \
-    for (i=0; i < nCols; ++i) {                                           \
-      fun(Mat[(long)pCols[i]-1], pMat->nrow(), &pRet[i],                  \
-                  (Rboolean)LOGICAL_VALUE(narm), NA_VALUE);               \
-    }                                                                     \
-  }                                                                       \
-  else                                                                    \
-  {                                                                       \
-    BigMatrixAccessor<dataT> Mat(*pMat);                                  \
-    long i=0;                                                             \
-    for (i=0; i < nCols; ++i) {                                           \
-      fun(Mat[(long)pCols[i]-1], pMat->nrow(), &pRet[i],                  \
-                    (Rboolean)LOGICAL_VALUE(narm), NA_VALUE);             \
-    }                                                                     \
+#define CALL_FUN(fun)                                                        \
+  BigMatrix *pMat = (BigMatrix*)R_ExternalPtrAddr(bigMatrixAddr);            \
+  if (pMat->separated_columns())                                             \
+  {                                                                          \
+    SepBigMatrixAccessor<dataT> Mat(*pMat);                                  \
+    long colOffset=pMat->col_offset();                                       \
+    long rowOffset=pMat->row_offset();                                       \
+    long i=0;                                                                \
+    for (i=0; i < nCols; ++i) {                                              \
+      fun(Mat[(long)pCols[i]-1+colOffset]+rowOffset, pMat->nrow(), &pRet[i], \
+                  (Rboolean)LOGICAL_VALUE(narm), NA_VALUE);                  \
+    }                                                                        \
+  }                                                                          \
+  else                                                                       \
+  {                                                                          \
+    BigMatrixAccessor<dataT> Mat(*pMat);                                     \
+    long i=0;                                                                \
+    long colOffset=pMat->col_offset();                                       \
+    long rowOffset=pMat->row_offset();                                       \
+    for (i=0; i < nCols; ++i) {                                              \
+      fun(Mat[(long)pCols[i]-1+colOffset]+rowOffset, pMat->nrow(), &pRet[i], \
+                    (Rboolean)LOGICAL_VALUE(narm), NA_VALUE);                \
+    }                                                                        \
   }
 
 template<typename dataT, typename retT>
