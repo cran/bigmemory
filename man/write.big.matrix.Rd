@@ -11,7 +11,8 @@ write the contents of a \code{\link{big.matrix}} to a file.
 write.big.matrix(x, fileName = NA, row.names = FALSE, col.names = FALSE, sep=',')
 read.big.matrix(fileName, sep = ',', header = FALSE, row.names = NULL, col.names = NULL,
         type = NA, skip = 0, separated = FALSE, shared = FALSE,
-        backingfile = NULL, backingpath = NULL, preserve = TRUE)
+        backingfile = NULL, backingpath = NULL, descriptorfile = NULL, preserve = TRUE,
+        extraCols = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -27,7 +28,9 @@ read.big.matrix(fileName, sep = ',', header = FALSE, row.names = NULL, col.names
   \item{shared}{if \code{TRUE}, load the object into shared memory.}
   \item{backingfile}{the root name for the file(s) for the cache of \code{x}.}
   \item{backingpath}{the path to the directory containing the file backing cache.}
+  \item{descriptorfile}{the file to be used for the description of the filebacked matrix.}
   \item{preserve}{if this is a filebacked \code{big.matrix}, it is preserved, by default, even after the end of the R session unless this option is set to \code{FALSE}.}
+  \item{extraCols}{the optional number of extra columns to be appended to the matrix for future use.}
 }
 \details{
 Currently, files must contain only one atomic type
@@ -74,6 +77,13 @@ w <- read.big.matrix("bar.txt", type="double")
 w[,]
 w <- read.big.matrix("bar.txt", type="short")
 w[,]
+
+# Another example using row names (which we don't like).
+x <- as.big.matrix(as.matrix(iris), type='double')
+rownames(x) <- as.character(1:nrow(x))
+write.big.matrix(x, 'IrisData.txt', col.names=TRUE, row.names=TRUE)
+y <- read.big.matrix("IrisData.txt", header=TRUE)
+
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

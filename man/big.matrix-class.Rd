@@ -17,8 +17,11 @@
 \alias{colvar,big.matrix-method}
 \alias{colsum,big.matrix-method}
 \alias{colprod,big.matrix-method}
+\alias{colna,big.matrix-method}
 \alias{binit,big.matrix-method}
 \alias{describe,big.matrix-method}
+\alias{backingpath,big.matrix-method}
+\alias{nebytes,big.matrix-method}
 \alias{dim,big.matrix-method}
 \alias{dimnames<-,big.matrix,list-method}
 \alias{dimnames,big.matrix-method}
@@ -92,6 +95,8 @@ and \code{filebacked.big.matrix()} are intended for the user.
     \item{colvar}{\code{signature(x = "big.matrix")}: returns the variance of each column (or the specified columns, optionally). }
     \item{binit}{\code{signature(x = "big.matrix")}: calculates 1D and 2D binning.}
     \item{describe}{\code{signature(x = "big.matrix")}: this is only interesting if the \code{big.matrix} is in shared memory. }
+    \item{backingpath}{\code{signature(x = "big.matrix")}: returns the backingpath of the \code{big.matrix}.}
+    \item{nebytes}{\code{signature(x = "big.matrix")}: undocumented experimental functionality.}
     \item{dim}{\code{signature(x = "big.matrix")}: returns the dimension of the \code{big.matrix}. }
     \item{dimnames<-}{\code{signature(x = "big.matrix", value = "list")}: set the row and column names. }
     \item{dimnames}{\code{signature(x = "big.matrix")}: get the row and column names. }

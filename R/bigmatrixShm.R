@@ -2,7 +2,7 @@
 #  *  bigmemory: an R package for managing massive matrices using C,
 #  *  with support for shared memory.
 #  *
-#  *  Copyright (C) 2008 John W. Emerson and Michael J. Kane
+#  *  Copyright (C) 2009 John W. Emerson and Michael J. Kane
 #  *
 #  *  This file is part of bigmemory.
 #  *
@@ -28,24 +28,20 @@ fix_backingpath = function(backingpath)
   if (is.null(backingpath) || backingpath == '')
   {
     backingpath = ''
-		return(backingpath)
+    return(backingpath)
   }
-	else if (substr(backingpath, nchar(backingpath), nchar(backingpath))!='/')
-	{
-		if (is.na(file.info(backingpath)$isdir))
-		{
-			stop("The supplied backing path does not exist.")
-		}
-		backingpath= paste(backingpath, '/', sep='')
-	}
-	else 
-	{
-		if ( is.na(file.info( substr(backingpath, 1, nchar(backingpath)-1) )) )
-		{
-			stop( "The supplied backing path does not exist.")
-		}
-	}
-	return(backingpath)
+  else if (substr(backingpath, nchar(backingpath), nchar(backingpath))!='/')
+  {
+    if (is.na(file.info(backingpath)$isdir))
+      stop("The supplied backing path does not exist.")
+    backingpath= paste(backingpath, '/', sep='')
+  }
+  else 
+  {
+    if ( is.na(file.info( substr(backingpath, 1, nchar(backingpath)-1) )) )
+      stop( "The supplied backing path does not exist.")
+  }
+  return(backingpath)
 }
 
 setClass('rw.mutex', representation(address='externalptr'))
@@ -61,6 +57,24 @@ attach.rw.mutex = function(mutexId)
   address = .Call('ConnectUserRWMutex', as.character(mutexId))
   return(new('rw.mutex', address=address))
 }
+
+setGeneric('backingpath', function(x)
+  standardGeneric('backingpath'))
+
+setMethod('backingpath', signature(x='big.matrix'),
+  function(x)
+  {
+    return(.Call('GetFileBackedPath',x@address))
+  })
+
+setGeneric('is.sub.matrix', function(x)
+	standardGeneric('is.sub.matrix'))
+
+setMethod('is.sub.matrix', signature(x='big.matrix'),
+	function(x)
+	{
+		return(.Call('CIsSubMatrix', x@address))
+	})
 
 setGeneric('describe', function(x) 
   standardGeneric('describe'))
@@ -91,16 +105,44 @@ unlock = function(x)
   invisible(NULL)
 }
 
+# For now a submatrix only goes over a range of columns and a range
+# of row.  This could be made more sophiticated but it would probably
+# take a lot of work.
+# Do I want to pass the big matrix or a descriptor?
+big.sub.matrix <- function( descriptor, firstRow=1, lastRow=NULL, 
+  firstCol=1, lastCol=NULL, backingpath='' )
+{
+  rowOffset <- firstRow-1
+  colOffset <- firstCol-1
+  rbm <- attach.big.matrix(descriptor, backingpath)
+  if (is.null(lastRow)) lastRow <- nrow(rbm)
+  if (is.null(lastCol)) lastCol <- ncol(rbm)
+  numCols <- lastCol-firstCol+1
+  numRows <- lastRow-firstRow+1
+  if (colOffset < 0 || rowOffset < 0 || numCols < 1 || numRows < 1 ||
+    colOffset+numCols > ncol(rbm) || rowOffset+numRows > nrow(rbm))
+  {
+    rm(rbm)
+    stop(paste("A big.sub.matrix object could not be created",
+               "with the specified parameters"))
+  }
+  .Call("SetRowOffsetInfo", rbm@address, as.double(rowOffset), 
+        as.double(numRows) )
+  .Call("SetColumnOffsetInfo", rbm@address, as.double(colOffset),
+        as.double(numCols))
+  return(rbm)
+}
+
 shared.big.matrix = function(nrow, ncol, type='integer', init=NULL, 
   dimnames=NULL, separated=FALSE, backingfile=NULL,
-  backingpath=NULL, descriptorfile=NULL, preserve=TRUE)
+  backingpath=NULL, descriptorfile=NULL, preserve=TRUE, nebytes=0)
 {
   if (!is.null(backingfile))
   {
     return(filebacked.big.matrix(nrow=nrow, ncol=ncol, type=type, init=init, 
 			dimnames=dimnames, separated=separated, backingfile=backingfile, 
 			backingpath=backingpath, descriptorfile=descriptorfile, 
-      preserve=preserve))
+      preserve=preserve, nebytes=nebytes))
   }
   # It would be nice if init could be a vector or matrix.
   if (nrow < 1 | ncol < 1)
@@ -125,7 +167,8 @@ shared.big.matrix = function(nrow, ncol, type='integer', init=NULL,
   }
   address = .Call('CCreateSharedMatrix', as.double(nrow), 
     as.double(ncol), as.character(colnames), as.character(rownames), 
-    as.integer(typeVal), as.double(init), as.logical(separated))
+    as.integer(typeVal), as.double(init), as.logical(separated),
+		as.double(nebytes))
   if (is.null(address))
   {
   stop(paste("Error: Shared memory could not be allocated for instance",
@@ -141,7 +184,7 @@ shared.big.matrix = function(nrow, ncol, type='integer', init=NULL,
 
 filebacked.big.matrix=function(nrow, ncol, type='integer', init=NULL,
   dimnames=NULL, separated=FALSE, backingfile=NULL, backingpath=NULL, 
-  descriptorfile=NULL, preserve=TRUE)
+  descriptorfile=NULL, preserve=TRUE, nebytes=0)
 {
   if (nrow < 1 | ncol < 1)
     stop('A big.matrix must have at least one row and one column')
@@ -174,7 +217,8 @@ filebacked.big.matrix=function(nrow, ncol, type='integer', init=NULL,
 	address = .Call('CCreateFileBackedBigMatrix', as.character(backingfile), 
     as.character(backingpath), as.double(nrow), as.double(ncol), 
     as.character(colnames), as.character(rownames), as.integer(typeVal), 
-    as.double(init), as.logical(separated), as.logical(preserve))
+    as.double(init), as.logical(separated), as.logical(preserve),
+		as.double(nebytes))
   if (is.null(address))
   {
     stop("Error encountered when creating instance of type big.matrix")
@@ -197,18 +241,22 @@ filebacked.big.matrix=function(nrow, ncol, type='integer', init=NULL,
 setMethod('describe', signature(x='big.matrix'),
   function(x)
   {
+		if (is.sub.matrix(x))
+		{
+			stop("You cannot describe a big.sub.matrix instance.")
+		}
     return(DescribeBigSharedMatrix(x))
   })
 
 DescribeBigSharedMatrix = function(x) #, file=NULL, path="")
 {
   if (!is.shared(x)) stop("this is not a shared big.matrix")
-  if (is.shared.memory.big.matrix(x))
+  if (is.shared(x) && !is.filebacked(x))
   {
     ret = list(sharedType='SharedMemory',
         sharedName=shared.name(x), nrow=nrow(x), ncol=ncol(x),
         rowNames=rownames(x), colNames=colnames(x), type=typeof(x), 
-        separated=is.separated(x))
+        separated=is.separated(x), nebytes=nebytes(x))
   }
   else
   {
@@ -216,7 +264,7 @@ DescribeBigSharedMatrix = function(x) #, file=NULL, path="")
         sharedName=shared.name(x), fileName=file.name(x),
         nrow=nrow(x), ncol=ncol(x),
         rowNames=rownames(x), colNames=colnames(x), type=typeof(x), 
-        separated=is.separated(x))
+        separated=is.separated(x), nebytes=nebytes(x))
   }
 }
 
@@ -243,14 +291,14 @@ attach.big.matrix = function(obj, backingpath='')
   {
     address = .Call('CAttachSharedBigMatrix', info$sharedName, info$nrow, 
       info$ncol, as.character(info$rowNames), as.character(info$colNames), 
-      as.integer(typeLength), info$separated)
+      as.integer(typeLength), info$separated, info$nebytes)
   }
   else
   {
     address = .Call('CAttachFileBackedBigMatrix', info$sharedName, 
       info$fileName, backingpath, info$nrow, info$ncol, 
       as.character(info$rowNames), as.character(info$colNames), 
-      as.integer(typeLength), info$separated)
+      as.integer(typeLength), info$separated, info$nebytes)
   }
   if (!is.null(address)) 
     ans <- new('big.matrix', address=address)
@@ -259,23 +307,17 @@ attach.big.matrix = function(obj, backingpath='')
   return(ans)  
 }
 
-setGeneric('is.shared.memory.big.matrix', function(x) 
-  standardGeneric('is.shared.memory.big.matrix'))
 
-setMethod('is.shared.memory.big.matrix', signature(x='big.matrix'),
+setGeneric('is.filebacked', function(x) standardGeneric('is.filebacked'))
+
+setMethod('is.filebacked', signature(x='big.matrix'),
   function(x)
   {
-    return(.Call('IsSharedMemoryBigMatrix', x@address))
+    return(.Call("IsFileBackedBigMatrix", x@address))
   })
 
-setGeneric('is.file.backed.big.matrix', function(x)
-  standardGeneric('is.file.backed.big.matrix'))
+setMethod('is.filebacked', signature(x='matrix'), function(x) return(FALSE))
 
-setMethod('is.file.backed.big.matrix', signature(x='big.matrix'),
-  function(x)
-  {
-    return(.Call('IsFileBackedBigMatrix', x@address))
-  })
 
 setGeneric('lockcols', function(x, cols=NULL, lockType='r') 
   standardGeneric('lockcols'))
@@ -320,7 +362,7 @@ setGeneric('file.name', function(x) standardGeneric('file.name'))
 setMethod('file.name', signature(x='big.matrix'),
   function(x)
   {
-    if (!is.file.backed.big.matrix(x))
+    if (!is.filebacked(x))
     {
       stop("The argument is not a file backed big.matrix.")
     }

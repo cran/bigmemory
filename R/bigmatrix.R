@@ -2,7 +2,7 @@
 #  *  bigmemory: an R package for managing massive matrices using C,
 #  *  with support for shared memory.
 #  *
-#  *  Copyright (C) 2008 John W. Emerson and Michael J. Kane
+#  *  Copyright (C) 2009 John W. Emerson and Michael J. Kane
 #  *
 #  *  This file is part of bigmemory.
 #  *
@@ -24,113 +24,100 @@
 
 setClass("big.matrix", representation(address='externalptr'))
 
-big.matrix = function(nrow, ncol, type='integer', init=NULL, dimnames=NULL,
-                      separated=FALSE, shared=FALSE, backingfile=NULL, 
-											backingpath=NULL, descriptorfile=NULL, preserve=TRUE)
+big.matrix <- function(nrow, ncol, type='integer', init=NULL, dimnames=NULL,
+                       separated=FALSE, shared=FALSE, backingfile=NULL, 
+                       backingpath=NULL, descriptorfile=NULL, preserve=TRUE,
+                       nebytes=0)
 {
-  # It would be nice if init could be a vector or matrix.
   if (nrow < 1 | ncol < 1)
     stop('A big.matrix instance must have at least one row and one column')
   
   typeVal=NULL
-  if (type == 'integer') 
-    typeVal=4
-  if (type == 'double') 
-    typeVal=8
-  if (type == 'short') 
-    typeVal=2
-  if (type == 'char') 
-    typeVal=1
+  if (type == 'integer') typeVal <- 4
+  if (type == 'double') typeVal <- 8
+  if (type == 'short') typeVal <- 2
+  if (type == 'char') typeVal <- 1
   if (is.null(typeVal)) stop('invalid type')
-  address=NULL
+  address <- NULL
   if (is.null(backingfile) & !shared)
   {
-    address = .Call('CCreateMatrix', as.double(nrow), as.double(ncol),
-      as.double(init), as.integer(typeVal), as.logical(separated))
+    address <- .Call('CCreateMatrix', as.double(nrow), as.double(ncol),
+                     as.double(init), as.integer(typeVal),
+                     as.logical(separated), as.double(nebytes))
     if (is.null(address))
-    {
       stop(paste("Error: Memory could not be allocated for instance of",
-				"type big.matrix", sep=' '))
-    }
-    x = new("big.matrix", address=address)
+		 "type big.matrix", sep=' '))
+    x <- new("big.matrix", address=address)
     if (is.null(x))
       stop("Error encountered when creating instance of type big.matrix")
-    dimnames(x) = dimnames
+    dimnames(x) <- dimnames
     return(x)
   }
   else
   {
-		if (!is.null(backingpath) &&
-			substr(backingpath, nchar(backingpath), nchar(backingpath)) != '/' ||
-			substr(backingpath, nchar(backingpath)-1, nchar(backingpath)) != '\\' )
-		{
-			backingfile = paste(backingpath, '/', sep='')
-		}
+    #if (!is.null(backingpath)) {
+    #  if (substr(backingpath, nchar(backingpath), nchar(backingpath)) != '/' ||
+    #   substr(backingpath, nchar(backingpath)-1, nchar(backingpath)) != '\\')
+    #    backingfile <- paste(backingpath, '/', sep='')
+    #}
     return(shared.big.matrix(nrow=nrow, ncol=ncol, type=type, init=init, 
-			dimnames=dimnames, separated=separated, backingfile=backingfile, 
-			backingpath=backingpath, descriptorfile=descriptorfile, 
-      preserve=preserve))
+           dimnames=dimnames, separated=separated, backingfile=backingfile, 
+           backingpath=backingpath, descriptorfile=descriptorfile, 
+           preserve=preserve, nebytes=nebytes))
   }
 }
 
 is.big.matrix <- function(x) return(class(x) == "big.matrix")
 
-as.big.matrix <- function(x, type = NULL, separated = FALSE,
-  shared=FALSE, backingfile=NULL, backingpath=NULL, descriptorfile=NULL,
-  preserve=TRUE)
+as.big.matrix <- function(x, type=NULL, separated=FALSE, shared=FALSE,
+                          backingfile=NULL, backingpath=NULL,
+                          descriptorfile=NULL, preserve=TRUE)
 {
   if (is.vector(x)) {
     x <- matrix(x, length(x), 1)
     warning("Coercing vector to a single-column matrix.")
   }
   if (!is.matrix(x)) 
-		stop('argument is not a matrix; perhaps it is a data frame?')
-	if (!is.numeric(x))
-	{
-		warning("Casting matrix to numeric type")
-		x = matrix( as.numeric(x), nrow=nrow(x), dimnames=dimnames(x) )
-	}
-	if (is.null(type))
-	{
-		type = typeof(x)
-	}
+    stop('argument is not a matrix; perhaps it is a data frame?')
+  if (!is.numeric(x)) {
+    warning("Casting matrix to numeric type")
+    x <- matrix( as.numeric(x), nrow=nrow(x), dimnames=dimnames(x) )
+  }
+  if (is.null(type)) type <- typeof(x)
   
   if (type=="integer" | type=="double" | type=="short" | type=="char") 
   {
-    if (shared | !is.null(backingfile))
-    {
-      y = shared.big.matrix(nrow=nrow(x), ncol=ncol(x), type=type, init=NULL, 
-				dimnames=dimnames(x), separated=separated, backingfile=backingfile, 
-				backingpath=backingpath, descriptorfile=descriptorfile,
-        preserve=preserve)
-    }
-		else
-    {
+    if (shared | !is.null(backingfile)) {
+      y <- shared.big.matrix(nrow=nrow(x), ncol=ncol(x), type=type, init=NULL, 
+                             dimnames=dimnames(x), separated=separated,
+                             backingfile=backingfile, backingpath=backingpath,
+                             descriptorfile=descriptorfile, preserve=preserve)
+    } else {
       y <- big.matrix(nrow=nrow(x), ncol=ncol(x), type=type, init=NULL, 
-				dimnames=dimnames(x), separated=separated)
+                      dimnames=dimnames(x), separated=separated)
     }
     y[1:nrow(x),1:ncol(x)] <- x
     junk <- gc() 
-  } else stop('that type is not implemented.')
+  } else stop('bigmemory: that type is not implemented.')
   return(y)
 }
 
-colnames.bm = function(x)
+colnames.bm <- function(x)
 {
-  ret = .Call("GetColumnNamesBM", x@address)
+  ret <- .Call("GetColumnNamesBM", x@address)
   if (length(ret)==0) return(NULL)
   return(ret)
 }
 
-rownames.bm = function(x)
+rownames.bm <- function(x)
 {
-  ret = .Call("GetRowNamesBM", x@address)
+  ret <- .Call("GetRowNamesBM", x@address)
   if (length(ret)==0) return(NULL)
   return(ret)
 }
 
 assign('colnames.bm<-', 
-  function(x,value) {
+  function(x, value) {
     if (!is.shared(x)) {
       if (is.character(value)) {
         if (any(value=="")) {
@@ -144,13 +131,11 @@ assign('colnames.bm<-',
         }
       }
       if (!is.null(value) & length(value) != ncol(x))
-      {
         stop("length of 'colnames' not equal to array extent.")
-      }
       .Call("SetColumnNames", x@address, value)
       return(x)
     } else stop('changing column names of a shared object is prohibited.')
-})
+  })
 
 assign('rownames.bm<-',
   function(x,value) {
@@ -171,56 +156,43 @@ assign('rownames.bm<-',
       .Call("SetRowNames", x@address, value)
       return(x)
     } else stop('changing row names of a shared object is prohibited.')
-})
+  })
 
 setMethod('ncol', signature(x="big.matrix"),
   function(x) {
     return(.Call("CGetNcol", x@address))
-})
+  })
 
 setMethod('nrow', signature(x="big.matrix"), 
   function(x) {
     return(.Call("CGetNrow", x@address))
-})
+  })
 
 setMethod('dim', signature(x="big.matrix"),
   function(x) return(c(nrow(x), ncol(x))))
 
-'[.big.matrix' = function(x, i=NULL, j=NULL)
+'[.big.matrix' <- function(x, i=NULL, j=NULL)
 {
-  if (is.shared(x) && options()$rlock.enabled)
-	{
-    lockcols(x, j, 'r')
-	}
+  if (is.shared(x) && options()$rlock.enabled) lockcols(x, j, 'r')
   retList <- .Call("GetMatrixElements", x@address, j, i)
 
-  dimnames(retList[[1]]) = list( retList[[2]], retList[[3]] )
-  if (sum(dim(retList[[1]])==1) > 0)
-  {
-    retList[[1]] = as.vector(retList[[1]])
-  }
-  if (is.shared(x) && options()$rlock.enabled)
-	{
-    unlockcols(x,j)
-	}
+  dimnames(retList[[1]]) <- list( retList[[2]], retList[[3]] )
+  if (sum(dim(retList[[1]])==1) > 0) retList[[1]] = as.vector(retList[[1]])
+  if (is.shared(x) && options()$rlock.enabled) unlockcols(x,j)
   return(retList[[1]])
 }
 
-SetFunction.bm = function(x, i, j, value)
+SetFunction.bm <- function(x, i, j, value)
 {
-  if (is.shared(x))
-  {
+  if (is.shared(x)) {
     options(rlock.enabled=FALSE)
     lockcols(x, j, 'w')
   }
   # Note: i may be a mwhich statement in which case we _must_ ensure
   # that we disable read locking before it is evaluated or we will
-  # have a race condition.
-  # Make sure we are setting at valid indices.
-  if (max(j) > ncol(x) | min(j) < 1 | max(i) > nrow(x) | min(i) < 1)
-  {
-    if (is.shared(x))
-    {
+  # have a race condition.  - Jay and Mike.
+  if (max(j) > ncol(x) | min(j) < 1 | max(i) > nrow(x) | min(i) < 1) {
+    if (is.shared(x)) {
       unlockcols(x, j)
       options(rlock.enabled=TRUE)
     }
@@ -233,28 +205,27 @@ SetFunction.bm = function(x, i, j, value)
     if (ncol(value) != length(j) | nrow(value) != length(i))
     {
       cat("ERROR check", ncol(x), length(j), nrow(x), length(i), "\n")
-      if (is.shared(x))
-      {
+      if (is.shared(x)) {
         options(rlock.enabled=TRUE)
         unlockcols(x, j)
       }
-      stop("Matrix dimensions do not agree with big.matrix instance set size")
+      stop("Matrix dimensions do not agree with big.matrix instance set size.")
     }
   } else if (length(value) != totelts) {
     # Otherwise, make sure we are assigning the correct number of things
     # (rep if necessary)
-    numReps = totelts / length(value)
-    if (numReps != round(numReps)) {
+    numReps <- totelts / length(value)
+    if (numReps != round(numReps))
       stop("number of items to replace is not a multiple of replacement length")
-    }
-    if (totelts > .Machine$integer.max) stop("Too large an assignment for R; bigmemory can fix this, eventually.\n")
-    value = rep(value, numReps)
+    if (totelts > .Machine$integer.max)
+      stop("Too large an assignment for this version of R.\n")
+    value <- rep(value, numReps)
   }
   if (typeof(x) != 'double')
   {
     integerVals = na.omit(as.integer(value))
-    if (sum(integerVals == na.omit(as.integer(value))) != length(integerVals) |
-        is.factor(value)) {
+    if ( sum(integerVals == na.omit(as.integer(value))) !=
+         length(integerVals) | is.factor(value)) {
       warning("non-integer (possibly Inf or -Inf) typecast to integer")
     }
   }
@@ -266,8 +237,7 @@ SetFunction.bm = function(x, i, j, value)
     .Call("SetMatrixElements", x@address, as.double(j), as.double(i), 
 			as.integer(value))
   }
-  if (is.shared(x))
-  {
+  if (is.shared(x)) {
     unlockcols(x,j)
     options(rlock.enabled=TRUE)
   }
@@ -302,11 +272,9 @@ setMethod('[<-',
          (typeof(value) == "double") && (typeof(x) != "double") ||
          (typeof(value) == "integer" && 
           (typeof(x) != "double" && typeof(x) != "integer")) )
-    {
       warning(cat("Assignment will down cast from ", typeof(value), " to ",
-        typeof(x), "\nHint: To remove this warning type:  ",
-				"options(big.memory.typecast.warning=FALSE)\n", sep=''))
-    }
+                  typeof(x), "\nHint: To remove this warning type:  ",
+                  "options(big.memory.typecast.warning=FALSE)\n", sep=''))
     return(SetFunction.bm(x, i, j, value))
   })
 
@@ -320,21 +288,22 @@ setMethod('[<-',
 
 setMethod('[<-',
   signature(x = "big.matrix", i="missing", j="missing"),
-  function(x, value) return(SetFunction.bm(x, 1:nrow(x), 1:ncol(x), value=value)))
+  function(x, value) return(SetFunction.bm(x, 1:nrow(x), 1:ncol(x),
+                            value=value)))
 
 setMethod('typeof', signature(x="big.matrix"),
   function(x) return(.Call('GetTypeString', x@address)))
 
 setMethod('head', signature(x="big.matrix"),
   function(x, n = 6) {
-    n <- as.integer(n)
+    n <- min(as.integer(n), nrow(x))
     if (n<1 | n>nrow(x)) stop("n must be between 1 and nrow(x)")
     return(x[1:n,])
   })
 
 setMethod('tail', signature(x="big.matrix"),
   function(x, n = 6) {
-    n <- as.integer(n)
+    n <- min(as.integer(n), nrow(x))
     if (n<1 | n>nrow(x)) stop("n must be between 1 and nrow(x)")
     return(x[(nrow(x)-n+1):nrow(x),])
   })
@@ -355,20 +324,27 @@ setMethod('print', signature(x='big.matrix'),
     }
   })
 
+setGeneric('nebytes', function(x) standardGeneric('nebytes'))
+setMethod('nebytes', signature(x='big.matrix'),
+  function(x) {
+    return(.Call("GetNumExtraBytes", x@address))
+  })
+
 ###################################################################
+# mwhich()
+#
 # x big.matrix  
 # cols  is.numeric or is.character
 # vals  list of scalar or 2-vectors otherwise
-# comps could be missing, in which case we'll fill in 'eq' in signature, earlier
-#   list of comparisons matching dim of associated vals component
+# comps could be missing, in which case we'll fill in 'eq' in signature,
+#       a list of comparisons matching dim of associated vals component
 
 setGeneric('mwhich', function(x, cols, vals, comps, op = 'AND')
   standardGeneric('mwhich'))
 
 setMethod('mwhich',
   signature(x='big.matrix', op='character'),
-  function(x, cols, vals, comps, op)
-  {
+  function(x, cols, vals, comps, op) {
     return(mwhich.internal(x, cols, vals, comps, op, 'MWhichBigMatrix'))
   })
 
@@ -387,7 +363,7 @@ setMethod('mwhich',
   signature(x='big.matrix', op='missing'),
   function(x, cols, vals, comps)
     return(mwhich.internal(x, cols, vals, comps, op='OR', 
-      whichFuncName='MWhichBigMatrix')))
+                           whichFuncName='MWhichBigMatrix')))
 
 setMethod('mwhich',
   signature(x='matrix', op='missing'),
@@ -395,10 +371,10 @@ setMethod('mwhich',
   {
     if (is.integer(x))
       return(mwhich.internal(x, cols, vals, comps, op='OR', 
-        whichFuncName='MWhichRIntMatrix'))
+                             whichFuncName='MWhichRIntMatrix'))
     if (is.numeric(x))
       return(mwhich.internal(x, cols, vals, comps, op='OR', 
-        whichFuncName='MWhichRNumericMatrix'))
+                             whichFuncName='MWhichRNumericMatrix'))
     stop("Unsupported matrix type given to mwhich")
   })
 
@@ -414,14 +390,12 @@ mwhich.internal <- function(x, cols, vals, comps, op, whichFuncName)
   if ( !is.list(vals) & 
        (length(vals)==1 || length(vals)==2) ) {
     vals <- list(vals)
-    #warning('coerced vals to list in which.bm')
   } else {
     if (!is.list(vals)) stop('vals should be a list')
   }
   if ( !is.list(comps) &
        (length(comps)==1 || length(comps)==2)) {
     comps <- list(comps)
-    #warning('coerced comps to list in which.bm')
   } else {
     if (!is.list(comps)) stop('comps should be a list')
   }
@@ -438,7 +412,12 @@ mwhich.internal <- function(x, cols, vals, comps, op, whichFuncName)
                           stringsAsFactors=FALSE)
     } else stop('length(comps) must be 1 or length(cols)')
   }
-  if (length(comps)!=length(vals)) stop('length of comps must equal length of vals')
+  if (length(comps)!=length(vals))
+    stop('length of comps must equal length of vals')
+  if (any(!unlist(lapply(comps, is.character))) ||
+      any(!(unlist(comps) %in% c('eq', 'neq', 'le', 'lt', 'ge', 'gt')))) {
+    stop('comps must contain eq, neq, le, lt, ge, or gt')
+  }
 
   testCol <- cols
   opVal <- 0
@@ -448,10 +427,6 @@ mwhich.internal <- function(x, cols, vals, comps, op, whichFuncName)
   chkmin <- rep(0, length(cols))
   chkmax <- rep(0, length(cols))
 
-  if (any(!unlist(lapply(comps, is.character))) ||
-      any(!(unlist(comps) %in% c('eq', 'neq', 'le', 'lt', 'ge', 'gt')))) {
-    stop('comps must contain eq, neq, le, lt, ge, or gt')
-  }
   for (i in 1:length(cols)) {
 
     if (length(vals[[i]])==1) {
@@ -493,12 +468,12 @@ mwhich.internal <- function(x, cols, vals, comps, op, whichFuncName)
 
   } # End of the for loop
 
-##### The new C function has new vectors chkmin and chkmax;
-##### the value 0 indicates comparison with equality,
-##### the value 1 indicates a strict inequality,
-##### the value -1 indicates a 'neq' check;
-##### if is.na checking is required, only the minVal needs to be
-##### used, with chkmin = 0 being is.na and chkmin = 1 being !is.na.
+  ##### The new C function has new vectors chkmin and chkmax;
+  ##### the value 0 indicates comparison with equality,
+  ##### the value 1 indicates a strict inequality,
+  ##### the value -1 indicates a 'neq' check;
+  ##### if is.na checking is required, only the minVal needs to be
+  ##### used, with chkmin = 0 being is.na and chkmin = 1 being !is.na.
 
   ret = NULL
   if (whichFuncName == 'MWhichBigMatrix')
@@ -517,52 +492,13 @@ mwhich.internal <- function(x, cols, vals, comps, op, whichFuncName)
   return(ret)
 }
 
-rm.cols <- function(x, remove.columns)
-{
-  if (is.shared(x)) stop("unable to remove columns of a shared matrix.")
-  if (is.separated(x)) stop("unable to remove columns of a separated matrix.")
-
-  if (length(remove.columns) != unique(length(remove.columns))) 
-    stop("You can only remove a column once.")
-  if (is.character(remove.columns)) 
-    remove.columns= mmap(remove.columns, colnames(x))
-  else if (min(remove.columns)<1 | max(remove.columns)>ncol(x)) 
-    stop("Error: column indices out of range.")
-  remove.columns = sort(remove.columns, decreasing=TRUE)
-  for (rmCol in remove.columns) {
-    .Call('CEraseMatrixCol', x@address, as.double(rmCol))
-    # TODO: For some reason, if I don't put a statement after this call
-    # I get a segfault from R (according to valgrind).  
-    i=1 
-  }
-}
-
-add.cols <- function(x, ncol=1, init=0, column.names=NULL)
-{
-  if (is.shared(x)) stop("unable to add columns to a shared matrix.")
-  if (is.separated(x)) stop("unable to add columns to a separated matrix.")
-
-  if (ncol < 1) stop('You must add at least 1 column.')
-  oldncols = ncol(x)
-  if (is.null(column.names) && !is.null(colnames(x))) {
-    column.names <- paste(rep('V', ncol), 
-                          (oldncols+1):(ncol(x)+ncol), sep=".")
-  }
-  if (length(unique(c(colnames.bm(x), column.names))) != ncol(x)+ncol)
-    stop("Variable names conflict in add.cols.\n")
-  for (i in 1:ncol) {
-    .Call('CAddMatrixCol', x@address, as.double(init))
-  }
-  if (!is.null(colnames(x))) colnames(x)[-c(1:oldncols)] = column.names
-}
-
 setMethod('dimnames', signature(x = "big.matrix"),
   function(x) return(list(rownames.bm(x), colnames.bm(x))))
 
 setMethod('dimnames<-', signature(x = "big.matrix", value='list'),
   function(x, value) {
-    rownames.bm(x) = value[[1]]
-    colnames.bm(x) = value[[2]]
+    rownames.bm(x) <- value[[1]]
+    colnames.bm(x) <- value[[2]]
     return(x)
   })
 
@@ -575,21 +511,29 @@ hash.mat <- function(x, col)
 }
 
 read.big.matrix <- function(fileName, sep=',', header=FALSE, row.names=NULL, 
-  col.names=NULL, type=NA, skip=0, separated=FALSE,  shared=FALSE,
-  backingfile=NULL, backingpath=NULL, preserve=TRUE) 
+                            col.names=NULL, type=NA, skip=0, separated=FALSE,
+                            shared=FALSE, backingfile=NULL, backingpath=NULL,
+                            descriptorfile=NULL, preserve=TRUE, extraCols=NULL) 
 { stop("Error: You must specify a file name.") }
 
 setMethod('read.big.matrix', signature(fileName='character'),
   function(fileName, sep=',', header=FALSE, row.names=NULL, col.names=NULL,
            type=NA, skip=0, separated=FALSE, shared=FALSE, 
-           backingfile=NULL, backingpath=NULL, preserve=TRUE)
+           backingfile=NULL, backingpath=NULL, descriptorfile=NULL,
+           preserve=TRUE, extraCols=NULL)
   {
+    if ( (header | is.character(col.names)) & is.numeric(extraCols) )
+      stop(paste("When column names are specified, extraCols must be the names",
+                 "of the extra columns."))
+    if (!header & is.null(col.names) & is.character(extraCols))
+      stop(paste("No header and no column names specified, so extraCols",
+           "must be an integer."))
     headerOffset <- as.numeric(header)
-    colNames=NULL
+    colNames <- NULL
     if (header) {
       colNames = unlist(strsplit(
         scan(fileName, what='character', skip=skip, nlines=1, sep="\n", 
-          quiet=TRUE), split=sep))
+             quiet=TRUE), split=sep))
       if (is.character(col.names)) {
         warning("Using supplied column names and skipping the header row.\n")
         colNames <- col.names
@@ -600,21 +544,18 @@ setMethod('read.big.matrix', signature(fileName='character'),
     } else {
       if (is.character(col.names)) colNames <- col.names
     }
-		# Get the first line of data
+    # Get the first line of data
     firstLineVals <- unlist(strsplit(
       scan(fileName, what='character', skip=(skip+headerOffset), 
            nlines=1, sep="\n", quiet=TRUE), split=sep))
 
-		# See if there are row names (a row name always has a double quote)
-		rowNames=NULL
-		userowNames=FALSE
-		hasQuoteInFirstLine = grep( '"', firstLineVals )
-		hasRowNames = length(hasQuoteInFirstLine) > 0 && hasQuoteInFirstLine > 0
-		if (hasRowNames)
-		{
-			userowNames=TRUE
-		}
-    
+    # See if there are row names (a row name always has a double quote)
+    rowNames <- NULL
+    userowNames <- FALSE
+    hasQuoteInFirstLine <- grep( '"', firstLineVals )
+    hasRowNames <- (length(hasQuoteInFirstLine) > 0 && hasQuoteInFirstLine > 0)
+    if (hasRowNames) userowNames <- TRUE
+
     if (length(colNames) == length(firstLineVals)) {
       # No row names, may or may not be column names, but we don't care
       # and nothing more needs to be done at this point.
@@ -624,7 +565,7 @@ setMethod('read.big.matrix', signature(fileName='character'),
       if (is.logical(row.names) && !row.names) 
         stop("Error: row names seem to exist in this file.\n")
       if (is.logical(row.names) && row.names) {
-        firstLineVals = firstLineVals[-1]
+        firstLineVals <- firstLineVals[-1]
         userowNames <- TRUE
       }
       if (is.character(row.names)) {
@@ -635,44 +576,42 @@ setMethod('read.big.matrix', signature(fileName='character'),
     } 
     if (is.null(colNames) && is.logical(row.names)) {
       if (row.names) {
-        firstLineVals = firstLineVals[-1]
+        firstLineVals <- firstLineVals[-1]
         userowNames <- TRUE
       }
     }
 
     numCols <- length(firstLineVals) - as.integer(hasRowNames)
     if (is.na(type)) {
-      warning('big.matrix type was not specified, going by first line, noting that a choice will be made between double and integer only (not short or char).')
+      warning(paste("big.matrix type was not specified, going by first line,",
+                    "noting that a choice will be made between double and",
+                    "integer only (not short or char)."))
       type <- 'double'
       if (sum(na.omit(as.integer(firstLineVals)) ==
               na.omit(as.double(firstLineVals))) ==
-        numCols ) 
-      {
+          numCols ) 
         type <- 'integer'
-      }
     }
 
     lineCount <- .Call("CCountLines", fileName) - skip - headerOffset
     numRows <- lineCount
-    if (!shared & is.null(backingfile))
-    {
-      bigMat = big.matrix(nrow=numRows, ncol=numCols, type=type, 
-        dimnames=list(rowNames, colNames), init=0)
-    } 
-    else 
-    {
-      if (!is.null(backingfile)) 
-      {
-        bigMat = filebacked.big.matrix(nrow=numRows, ncol=numCols, type=type,
-          dimnames=list(rowNames, colNames), init=NULL, separated=separated,
-          backingfile=backingfile, backingpath=backingpath, preserve=preserve)
-      } 
-      else 
-      {
-        bigMat = shared.big.matrix(nrow=numRows, ncol=numCols, type=type, 
-          dimnames=list(rowNames, colNames), init=NULL, separated=separated )
-      }
+    createCols <- numCols
+    if (is.numeric(extraCols)) createCols = createCols + extraCols
+    if (is.character(extraCols)) {
+      createCols <- createCols + length(extraCols)
+      colNames <- c(colNames, extraCols)
     }
+    if (shared | !is.null(backingfile)) {
+      bigMat <- shared.big.matrix(nrow=numRows, ncol=createCols, type=type,
+                                  dimnames=list(rowNames, NULL), init=NULL, 
+                                  separated=separated, backingfile=backingfile,
+                                  backingpath=backingpath,
+                                  descriptorfile=descriptorfile,
+                                  preserve=preserve)
+    } else {
+      bigMat <- big.matrix(nrow=numRows, ncol=createCols, type=type, 
+                           dimnames=list(rowNames, NULL), init=NULL)
+    } 
     ############################################################
     # if userowNames == NULL, then there aren't any in the file.
     # if userowNames == TRUE, then they exist: use them!
@@ -680,20 +619,29 @@ setMethod('read.big.matrix', signature(fileName='character'),
     .Call('ReadMatrix', fileName, bigMat@address, 
           as.integer(skip+headerOffset), as.integer(numRows), 
           as.integer(numCols), sep, hasRowNames, userowNames)
-#    if (is.logical(userowNames) && userowNames == FALSE)
-#      rownames(bigMat) = row.names
+    # Note: if extra column names are specified, the big.matrix object
+    # doesn't have all of its column names.
+    if (is.character(colNames) && length(colNames) == ncol(bigMat)) {
+      .Call("SetColumnNames", bigMat@address, colNames)
+    }
+    if (header && is.filebacked(bigMat)) 
+		{
+			dput(describe(paste(fix_backingpath(backingpath),descriptorfile,sep='')))
+		}
     return(bigMat)
   })
 
-write.big.matrix <- function(x, fileName=NA, row.names = FALSE, col.names = FALSE,
-  sep=",")
+write.big.matrix <- function(x, fileName=NA, row.names = FALSE,
+                             col.names = FALSE, sep=",")
 { stop("Error: You must specify a bigmatRix and file name.") }
 
 setMethod('write.big.matrix', signature(x='big.matrix',fileName='character'),
 function(x, fileName, row.names = FALSE, col.names = FALSE, sep=",")
 {
-  if (is.character(row.names)) stop("You must set the row names before writing.\n")
-  if (is.character(col.names)) stop("You must set the column names before writing.\n")
+  if (is.character(row.names))
+    stop("You must set the row names before writing.\n")
+  if (is.character(col.names))
+    stop("You must set the column names before writing.\n")
   if (row.names & !.Call("HasRowColNames",x@address)[1]) {
     row.names <- FALSE
     warning("No row names exist, overriding your row.names option.\n")
@@ -729,31 +677,19 @@ setMethod('is.separated', signature(x='big.matrix'),
 setMethod('is.separated', signature(x='matrix'), function(x) return(FALSE))
 
 deepcopy <- function(x, type=NULL, separated=NULL, shared=NULL, 
-	backingfile=NULL, backingpath=NULL, preserve=TRUE) 
+                     backingfile=NULL, backingpath=NULL, preserve=TRUE) 
 {
-	if (nrow(x) > 2^31-1)
-	{
-		stop(paste("Too many rows to copy for bigmemory version 3.2. ",
-			"This will be fixed in the next iteration."))
-	}
-	if (is.null(type))
-	{
-		type = typeof(x)
-	}
-	if (is.null(separated))
-	{
-		separated=is.separated(x)
-	}
-	if (is.null(shared))
-	{
-		shared = is.shared(x)
-	}
-	y = big.matrix( nrow=nrow(x), ncol=ncol(x), type=type, init=NULL,
-		dimnames = dimnames(x), separated=separated, shared=shared,
-		backingfile=backingfile, backingpath=backingpath, preserve=preserve)
-  for (i in 1:ncol(x))
-  {
-    y[,i] <- x[,i]
-  }
+  if (nrow(x) > 2^31-1)
+    stop(paste("Too many rows to copy at this point in time;",
+               "this may be fixed in the future."))
+  if (is.null(type)) type <- typeof(x)
+  if (is.null(separated)) separated <- is.separated(x)
+  if (is.null(shared)) shared <- is.shared(x)
+  y <- big.matrix(nrow=nrow(x), ncol=ncol(x), type=type, init=NULL,
+		  dimnames = dimnames(x), separated=separated, shared=shared,
+		  backingfile=backingfile, backingpath=backingpath,
+                  preserve=preserve)
+  for (i in 1:ncol(x)) y[,i] <- x[,i]
+
   return(y)
 }

@@ -54,7 +54,8 @@ void* CreateLocalSepColMatrix(long nrow, long ncol)
   int i;
   for (i=0; i < ncol; ++i) 
   {
-    pMat[i] = new T[nrow];
+    //pMat[i] = new T[nrow];
+    pMat[i] = reinterpret_cast<T*>(new char[sizeof(T)*nrow]);
   }
   return reinterpret_cast<void*>(pMat);
 }
@@ -66,10 +67,12 @@ void* CreateSepColMatrix(long nrow, long ncol)
 }
 
 bool LocalBigMatrix::create( const long numRow, const long numCol, 
-  const int matrixType, const bool sepCols)
+  const long numEbytes, const int matrixType, const bool sepCols)
 {
   _nrow = numRow;
+	_matrixRows = _nrow;
   _ncol = numCol;
+	_matrixCols = _ncol;
   _matType = matrixType;
   _sepCols = sepCols;
   try
@@ -79,33 +82,38 @@ bool LocalBigMatrix::create( const long numRow, const long numCol,
       switch(_matType)
       {
         case 1:
-          _matrix = CreateLocalSepColMatrix<char>(_nrow, _ncol);
+          _pdata = CreateLocalSepColMatrix<char>(_nrow, _ncol);
           break;
         case 2:
-          _matrix = CreateLocalSepColMatrix<short>(_nrow, _ncol);
+          _pdata = CreateLocalSepColMatrix<short>(_nrow, _ncol);
           break;
         case 4:
-          _matrix = CreateLocalSepColMatrix<int>(_nrow, _ncol);
+          _pdata = CreateLocalSepColMatrix<int>(_nrow, _ncol);
           break;
         case 8:
-          _matrix = CreateLocalSepColMatrix<double>(_nrow, _ncol);
+          _pdata = CreateLocalSepColMatrix<double>(_nrow, _ncol);
       }
     }
     else
     {
+			_nebytes = numEbytes;
       switch(_matType)
       {
         case 1:
-          _matrix = reinterpret_cast<void*>(new char[_nrow*_ncol]);
+          _pdata = reinterpret_cast<void*>(
+						new char[_nebytes+_nrow*_ncol]);
           break;
         case 2:
-          _matrix = reinterpret_cast<void*>(new short[_nrow*_ncol]);
+          _pdata = reinterpret_cast<void*>(
+						new char[_nebytes+sizeof(short)*_nrow*_ncol]);
           break;
         case 4:
-          _matrix = reinterpret_cast<void*>(new int[_nrow*_ncol]);
+          _pdata = reinterpret_cast<void*>(
+						new char[_nebytes+sizeof(int)*_nrow*_ncol]);
           break;
         case 8:
-          _matrix = reinterpret_cast<void*>(new double[_nrow*_ncol]);
+          _pdata = reinterpret_cast<void*>(
+						new char[_nebytes+sizeof(double)*_nrow*_ncol]);
       }
     }
   }
@@ -135,47 +143,56 @@ void DestroyLocalMatrix( T* matrix )
 
 void LocalBigMatrix::destroy()
 {
-  if (_matrix && _ncol && _nrow)
+  if (_pdata && _matrixCols && _matrixRows)
   {
     if (_sepCols)
     {
+      DestroyLocalSepColMatrix(reinterpret_cast<char**>(_pdata), _matrixRows);
+/*
       switch(_matType)
       {
         case 1:
-          DestroyLocalSepColMatrix(reinterpret_cast<char**>(_matrix), _ncol);
+          DestroyLocalSepColMatrix(reinterpret_cast<char**>(_pdata), _ncol);
           break;
         case 2:
-          DestroyLocalSepColMatrix(reinterpret_cast<short**>(_matrix), _ncol);
+          DestroyLocalSepColMatrix(reinterpret_cast<short**>(_pdata), _ncol);
           break;
         case 4:
-          DestroyLocalSepColMatrix(reinterpret_cast<int**>(_matrix), _ncol);
+          DestroyLocalSepColMatrix(reinterpret_cast<int**>(_pdata), _ncol);
           break;
         case 8:
-          DestroyLocalSepColMatrix(reinterpret_cast<double**>(_matrix), _ncol);
+          DestroyLocalSepColMatrix(reinterpret_cast<double**>(_pdata), _ncol);
           break;
       }
+*/
     }
     else
     {
+      DestroyLocalMatrix(reinterpret_cast<char*>(_pdata));
+/*
       switch(_matType)
       {
         case 1:
-          DestroyLocalMatrix(reinterpret_cast<char*>(_matrix));
+          DestroyLocalMatrix(reinterpret_cast<char*>(_pdata));
           break;
         case 2:
-        DestroyLocalMatrix(reinterpret_cast<short*>(_matrix));
-        break;
+          DestroyLocalMatrix(reinterpret_cast<char*>(_pdata));
+          break;
         case 4:
-          DestroyLocalMatrix(reinterpret_cast<int*>(_matrix));
+          DestroyLocalMatrix(reinterpret_cast<char*>(_pdata));
           break;
         case 8:
-          DestroyLocalMatrix(reinterpret_cast<double*>(_matrix));
+          DestroyLocalMatrix(reinterpret_cast<char*>(_pdata));
           break;
       }
+*/
     }
-    _matrix=NULL;
-    _ncol=0;
+    _pdata=NULL;
     _nrow=0;
+		_matrixRows=0;
+    _ncol=0;
+		_matrixCols=0;
+    _nebytes=0;
   }
 }
 
@@ -285,13 +302,13 @@ bool CreateMutexes( MutexPtrs &mutexPtrs, const std::string &sharedName,
 
 template<typename T>
 void* CreateSharedMatrix( const std::string &sharedName, 
-  MappedRegionPtrs &dataRegionPtrs, const long nrow, const long ncol )
+  MappedRegionPtrs &dataRegionPtrs, const long nrow, const long ncol, const long nebytes)
 {
   try
   {
 //    shared_memory_object::remove( (sharedName.c_str()) );
     shared_memory_object shm(create_only, sharedName.c_str(), read_write);
-    shm.truncate( nrow*ncol*sizeof(T) );
+    shm.truncate( nebytes + nrow*ncol*sizeof(T) );
     dataRegionPtrs.push_back(
       MappedRegionPtr(new MappedRegion(shm, read_write)));
   }
@@ -304,7 +321,7 @@ void* CreateSharedMatrix( const std::string &sharedName,
 }
 
 bool SharedMemoryBigMatrix::create( const long numRow, 
-  const long numCol, const int matrixType, 
+  const long numCol, const long numEbytes, const int matrixType, 
   const bool sepCols )
 {
   if (!create_uuid())
@@ -316,7 +333,9 @@ bool SharedMemoryBigMatrix::create( const long numRow,
   	named_mutex mutex( open_or_create, (_uuid+"_counter_mutex").c_str() );
   	mutex.lock();
   	_nrow = numRow;
+		_matrixRows = _nrow;
   	_ncol = numCol;
+		_matrixCols = _ncol;
   	_matType = matrixType;
   	_sepCols = sepCols;
   	_sharedName=_uuid;
@@ -326,44 +345,45 @@ bool SharedMemoryBigMatrix::create( const long numRow,
     	switch(_matType)
     	{
       	case 1:
-        	_matrix = CreateSharedSepMatrix<char>(_sharedName, _dataRegionPtrs,
+        	_pdata = CreateSharedSepMatrix<char>(_sharedName, _dataRegionPtrs,
           	_nrow, _ncol);
         	break;
       	case 2:
-        	_matrix = CreateSharedSepMatrix<short>(_sharedName, _dataRegionPtrs, 
+        	_pdata = CreateSharedSepMatrix<short>(_sharedName, _dataRegionPtrs, 
           	_nrow, _ncol);
         	break;
       	case 4:
-        	_matrix = CreateSharedSepMatrix<int>(_sharedName, _dataRegionPtrs, 
+        	_pdata = CreateSharedSepMatrix<int>(_sharedName, _dataRegionPtrs, 
           	_nrow, _ncol);
         	break;
       	case 8:
-        	_matrix = CreateSharedSepMatrix<double>(_sharedName, _dataRegionPtrs,
+        	_pdata = CreateSharedSepMatrix<double>(_sharedName, _dataRegionPtrs,
           	_nrow, _ncol);
     	}
   	}
   	else
   	{
+			_nebytes = numEbytes;
     	switch(_matType)
     	{
       	case 1:
-        	_matrix = CreateSharedMatrix<char>(_sharedName, _dataRegionPtrs, 
-          	_nrow, _ncol);
+        	_pdata = CreateSharedMatrix<char>(_sharedName, _dataRegionPtrs, 
+          	_nrow, _ncol, _nebytes);
         	break;
       	case 2:
-        	_matrix = CreateSharedMatrix<short>(_sharedName, _dataRegionPtrs,
-          	_nrow, _ncol);
+        	_pdata = CreateSharedMatrix<short>(_sharedName, _dataRegionPtrs,
+          	_nrow, _ncol, _nebytes);
         	break;
       	case 4:
-        	_matrix = CreateSharedMatrix<int>(_sharedName, _dataRegionPtrs,
-          	_nrow, _ncol);
+        	_pdata = CreateSharedMatrix<int>(_sharedName, _dataRegionPtrs,
+          	_nrow, _ncol, _nebytes);
         	break;
       	case 8:
-      	  _matrix = CreateSharedMatrix<double>(_sharedName, _dataRegionPtrs,
-      	    _nrow, _ncol);
+      	  _pdata = CreateSharedMatrix<double>(_sharedName, _dataRegionPtrs,
+      	    _nrow, _ncol, _nebytes);
     	}
   	}
-  	if (_matrix == NULL)
+  	if (_pdata == NULL)
   	{
     	_sharedCounter.reset();
     	mutex.unlock();
@@ -384,8 +404,8 @@ bool SharedMemoryBigMatrix::create( const long numRow,
 
 template<typename T>
 void* ConnectSharedSepMatrix( const std::string &uuid, 
-  MappedRegionPtrs &dataRegionPtrs, const unsigned long nrow, 
-  const unsigned long ncol )
+  MappedRegionPtrs &dataRegionPtrs, const long nrow, 
+  const long ncol )
 {
   T** pMat = new T*[ncol];
   unsigned long i;
@@ -412,8 +432,8 @@ void* ConnectSharedSepMatrix( const std::string &uuid,
 
 template<typename T>
 void* ConnectSharedMatrix( const std::string &sharedName, 
-  MappedRegionPtrs &dataRegionPtrs, const unsigned long nrow, 
-  const unsigned long ncol)
+  MappedRegionPtrs &dataRegionPtrs, const long nrow, 
+  const long ncol)
 {
 	try 
 	{
@@ -430,8 +450,8 @@ void* ConnectSharedMatrix( const std::string &sharedName,
 }
 
 bool SharedMemoryBigMatrix::connect( const std::string &uuid, 
-  const long numRow, const long numCol, const int matrixType, 
-  const bool sepCols )
+	const long numRow, const long numCol, const long numEbytes, 
+	const int matrixType, const bool sepCols )
 {
 	try
 	{
@@ -440,7 +460,9 @@ bool SharedMemoryBigMatrix::connect( const std::string &uuid,
   	_uuid=uuid;
   	_sharedName = _uuid;
   	_nrow = numRow;
+		_matrixRows=_nrow;
   	_ncol = numCol;
+		_matrixCols=_ncol;
   	_matType = matrixType;
   	_sepCols = sepCols;
   	_sharedCounter.init(_sharedName+"_counter");
@@ -448,45 +470,48 @@ bool SharedMemoryBigMatrix::connect( const std::string &uuid,
   	{
     	switch(_matType)
     	{
+// JJJ I don't think nrow is needed below.
       	case 1:
-        	_matrix = ConnectSharedSepMatrix<char>(_sharedName, _dataRegionPtrs,
+        	_pdata = ConnectSharedSepMatrix<char>(_sharedName, _dataRegionPtrs,
           	_nrow, _ncol);
         	break;
       	case 2:
-        	_matrix = ConnectSharedSepMatrix<short>(_sharedName, _dataRegionPtrs,
+        	_pdata = ConnectSharedSepMatrix<short>(_sharedName, _dataRegionPtrs,
           	_nrow, _ncol);
         	break;
       	case 4:
-        	_matrix = ConnectSharedSepMatrix<int>(_sharedName, _dataRegionPtrs,
+        	_pdata = ConnectSharedSepMatrix<int>(_sharedName, _dataRegionPtrs,
           	_nrow, _ncol);
         	break;
       	case 8:
-        	_matrix = ConnectSharedSepMatrix<double>(_sharedName, _dataRegionPtrs,
+        	_pdata = ConnectSharedSepMatrix<double>(_sharedName, _dataRegionPtrs,
           	_nrow, _ncol);
     	}
   	}
   	else
   	{
+      _nebytes = numEbytes;
     	switch(_matType)
     	{
+// JJJ I don't think nrow and ncol are needed below.
       	case 1:
-        	_matrix = ConnectSharedMatrix<char>(_sharedName, _dataRegionPtrs,
+        	_pdata = ConnectSharedMatrix<char>(_sharedName, _dataRegionPtrs,
           	_nrow, _ncol);
         	break;
       	case 2:
-        	_matrix = ConnectSharedMatrix<short>(_sharedName, _dataRegionPtrs,
+        	_pdata = ConnectSharedMatrix<short>(_sharedName, _dataRegionPtrs,
           	_nrow, _ncol);
         	break;
       	case 4:
-        	_matrix = ConnectSharedMatrix<int>(_sharedName, _dataRegionPtrs,
+        	_pdata = ConnectSharedMatrix<int>(_sharedName, _dataRegionPtrs,
           	_nrow, _ncol);
         	break;
       	case 8:
-        	_matrix = ConnectSharedMatrix<double>(_sharedName, _dataRegionPtrs,
+        	_pdata = ConnectSharedMatrix<double>(_sharedName, _dataRegionPtrs,
           	_nrow, _ncol);
     	}
   	}
-		if (!_matrix)
+		if (!_pdata)
 		{
     	mutex.unlock();
     	named_mutex::remove((_sharedName+"_counter_mutex").c_str());
@@ -530,25 +555,28 @@ bool SharedMemoryBigMatrix::destroy()
   	{
     	if (_sharedCounter.get() == 1)
     	{
-      	DestroySharedSepMatrix(_uuid, _ncol);
+      	DestroySharedSepMatrix(_uuid, _matrixCols);
     	}
-    	if (_matrix)
+    	if (_pdata)
     	{
+          delete [] reinterpret_cast<char**>(_pdata);
+/*
       	switch (_matType)
       	{
         	case 1:
-          	delete [] reinterpret_cast<char**>(_matrix);
+          	delete [] reinterpret_cast<char**>(_pdata);
           	break;
         	case 2:
-          	delete [] reinterpret_cast<short**>(_matrix);
+          	delete [] reinterpret_cast<char**>(_pdata);
           	break;
         	case 4:
-          	delete [] reinterpret_cast<int**>(_matrix);
+          	delete [] reinterpret_cast<char**>(_pdata);
           	break;
         	case 8:
-          	delete [] reinterpret_cast<double**>(_matrix);
+          	delete [] reinterpret_cast<char**>(_pdata);
           	break;
       	}
+*/
     	}
   	}
   	else
@@ -634,7 +662,7 @@ void* CreateFileBackedSepMatrix( const std::string &fileName,
 template<typename T>
 void* ConnectFileBackedMatrix( const std::string &fileName, 
   const std::string &filePath, MappedRegionPtrs &dataRegionPtrs, 
-  const long nrow, const long ncol )
+  const long nrow, const long ncol)
 {
   try
   {
@@ -653,7 +681,7 @@ void* ConnectFileBackedMatrix( const std::string &fileName,
 template<typename T>
 void* CreateFileBackedMatrix( const std::string &fileName, 
   const std::string &filePath, MappedRegionPtrs &dataRegionPtrs, 
-  const long nrow, const long ncol )
+  const long nrow, const long ncol, const long nebytes)
 {
   // Create the file.
   std::filebuf fbuf;
@@ -663,7 +691,7 @@ void* CreateFileBackedMatrix( const std::string &fileName,
 	{
 		return NULL;
 	}
-  fbuf.pubseekoff( nrow*ncol*sizeof(T), std::ios_base::beg);
+  fbuf.pubseekoff( nebytes+nrow*ncol*sizeof(T), std::ios_base::beg);
   // I'm not sure if I need this next line
   fbuf.sputc(0);
   fbuf.close();
@@ -673,7 +701,7 @@ void* CreateFileBackedMatrix( const std::string &fileName,
 
 bool FileBackedBigMatrix::create( const std::string &fileName, 
   const std::string &filePath, const long numRow, const long numCol, 
-  const int matrixType, const bool sepCols, bool preserve )
+  const long numEbytes, const int matrixType, const bool sepCols, bool preserve )
 {
   if (!create_uuid())
 	{
@@ -681,13 +709,16 @@ bool FileBackedBigMatrix::create( const std::string &fileName,
 	}
 	try
 	{
-  	named_mutex mutex(open_or_create,(fileName+uuid()+"_counter_mutex").c_str());
+  	named_mutex 
+			mutex(open_or_create,(fileName+uuid()+"_counter_mutex").c_str());
   	mutex.lock();
   	_fileName = fileName;
   	_sharedName=fileName+uuid();
   	_sharedCounter.init(_sharedName+"_counter");
   	_nrow = numRow;
+		_matrixRows = _nrow;
   	_ncol = numCol;
+		_matrixCols = _ncol;
   	_matType = matrixType;
   	_sepCols = sepCols;
   	_preserve = preserve;
@@ -696,44 +727,45 @@ bool FileBackedBigMatrix::create( const std::string &fileName,
     	switch(_matType)
     	{
       	case 1:
-        	_matrix = CreateFileBackedSepMatrix<char>(_fileName, filePath,
+        	_pdata = CreateFileBackedSepMatrix<char>(_fileName, filePath,
           	_dataRegionPtrs, _nrow, _ncol);
         	break;
       	case 2:
-        	_matrix = CreateFileBackedSepMatrix<short>(_fileName, filePath,
+        	_pdata = CreateFileBackedSepMatrix<short>(_fileName, filePath,
           	_dataRegionPtrs, _nrow, _ncol);
         	break;
       	case 4:
-        	_matrix = CreateFileBackedSepMatrix<int>(_fileName, filePath,
+        	_pdata = CreateFileBackedSepMatrix<int>(_fileName, filePath,
           	_dataRegionPtrs, _nrow, _ncol);
         	break;
       	case 8:
-        	_matrix = CreateFileBackedSepMatrix<double>(_fileName, filePath,
+        	_pdata = CreateFileBackedSepMatrix<double>(_fileName, filePath,
           	_dataRegionPtrs, _nrow, _ncol);
     	}
   	}
   	else
   	{
+			_nebytes = numEbytes;
     	switch(_matType)
     	{
       	case 1:
-        	_matrix = CreateFileBackedMatrix<char>(_fileName, filePath,
-          	_dataRegionPtrs, _nrow, _ncol);
+        	_pdata = CreateFileBackedMatrix<char>(_fileName, filePath,
+          	_dataRegionPtrs, _nrow, _ncol, numEbytes);
         	break;
       	case 2:
-        	_matrix = CreateFileBackedMatrix<short>(_fileName, filePath,
-          	_dataRegionPtrs, _nrow, _ncol);
+        	_pdata = CreateFileBackedMatrix<short>(_fileName, filePath,
+          	_dataRegionPtrs, _nrow, _ncol, numEbytes);
         	break;
       	case 4:
-        	_matrix = CreateFileBackedMatrix<int>(_fileName, filePath,
-          	_dataRegionPtrs, _nrow, _ncol);
+        	_pdata = CreateFileBackedMatrix<int>(_fileName, filePath,
+          	_dataRegionPtrs, _nrow, _ncol, numEbytes);
         	break;
       	case 8:
-        	_matrix = CreateFileBackedMatrix<double>(_fileName, filePath,
-          	_dataRegionPtrs, _nrow, _ncol);
+        	_pdata = CreateFileBackedMatrix<double>(_fileName, filePath,
+          	_dataRegionPtrs, _nrow, _ncol, numEbytes);
     	}
   	}
-		if (!_matrix)
+		if (!_pdata)
 		{
 			return false;
 		}
@@ -751,8 +783,8 @@ bool FileBackedBigMatrix::create( const std::string &fileName,
 
 bool FileBackedBigMatrix::connect( const std::string &sharedName, 
   const std::string &fileName, const std::string &filePath, const long numRow, 
-  const long numCol, const int matrixType, const bool sepCols, 
-  const bool preserve )
+  const long numCol, const long numEbytes, const int matrixType, 
+  const bool sepCols, const bool preserve )
 {
 	try
 	{
@@ -761,54 +793,58 @@ bool FileBackedBigMatrix::connect( const std::string &sharedName,
 	  _sharedName=sharedName;
 	  _fileName=fileName;
 	  _nrow = numRow;
+		_matrixRows = _nrow;
 	  _ncol = numCol;
+		_matrixCols = _ncol;
 	  _matType = matrixType;
 	  _sepCols = sepCols;
 	  _preserve = preserve;
 	  _sharedCounter.init(_sharedName+"_counter");
+    _filePath = filePath;
 	  if (_sepCols)
 	  {
 	    switch(_matType)
 	    {
 	      case 1:
-	        _matrix = ConnectFileBackedSepMatrix<char>(_fileName, filePath,
+	        _pdata = ConnectFileBackedSepMatrix<char>(_fileName, filePath,
 	          _dataRegionPtrs, _nrow, _ncol);
 	        break;
 	      case 2:
-	        _matrix = ConnectFileBackedSepMatrix<short>(_fileName, filePath,
+	        _pdata = ConnectFileBackedSepMatrix<short>(_fileName, filePath,
           _dataRegionPtrs, _nrow, _ncol);
 	        break;
 	      case 4:
-	        _matrix = ConnectFileBackedSepMatrix<int>(_fileName, filePath,
+	        _pdata = ConnectFileBackedSepMatrix<int>(_fileName, filePath,
 	          _dataRegionPtrs, _nrow, _ncol);
 	        break;
 	      case 8:
-	        _matrix = ConnectFileBackedSepMatrix<double>(_fileName, filePath,
+	        _pdata = ConnectFileBackedSepMatrix<double>(_fileName, filePath,
 	          _dataRegionPtrs, _nrow, _ncol);
 	    }
 	  }
 	  else
 	  {
+			_nebytes = numEbytes;
 	    switch(_matType)
 	    {
 	      case 1:
-	        _matrix = ConnectFileBackedMatrix<char>(_fileName, filePath,
+	        _pdata = ConnectFileBackedMatrix<char>(_fileName, filePath,
 	          _dataRegionPtrs, _nrow, _ncol);
 	        break;
 	      case 2:
-	        _matrix = ConnectFileBackedMatrix<short>(_fileName, filePath,
+	        _pdata = ConnectFileBackedMatrix<short>(_fileName, filePath,
 	          _dataRegionPtrs, _nrow, _ncol);
 	        break;
 	      case 4:
-	        _matrix = ConnectFileBackedMatrix<int>(_fileName, filePath,
+	        _pdata = ConnectFileBackedMatrix<int>(_fileName, filePath,
 	          _dataRegionPtrs, _nrow, _ncol);
 	        break;
 	      case 8:
-	        _matrix = ConnectFileBackedMatrix<double>(_fileName, filePath,
+	        _pdata = ConnectFileBackedMatrix<double>(_fileName, filePath,
 	          _dataRegionPtrs, _nrow, _ncol);
 	    }
 	  }
-		if (!_matrix)
+		if (!_pdata)
 		{
 	  	mutex.unlock();
 	  	named_mutex::remove((_sharedName+"_counter_mutex").c_str());
@@ -854,54 +890,67 @@ bool FileBackedBigMatrix::destroy()
   	named_mutex mutex( open_or_create, (_sharedName+"_counter_mutex").c_str() );
   	mutex.lock();
   	_dataRegionPtrs.resize(0);
-  	if (_sepCols)
-  	{
-    	if (_sharedCounter.get() == 1)
-    	{
-      	DestroyFileBackedSepMatrix(_sharedName, _ncol, _fileName, _preserve);
+  	if (_sepCols) 
+    {
+      if (_sharedCounter.get() == 1) 
+      {
+        DestroyFileBackedSepMatrix(_sharedName, _matrixCols, 
+          _fileName, _preserve);
     	}
-    	if (_matrix)
-    	{
-      	switch(_matType)
+    	if (_pdata) 
+      {
+        switch(_matType)
       	{
-        	case 1:
-          	delete [] reinterpret_cast<char**>(_matrix);
+          case 1:
+            delete [] reinterpret_cast<char**>(_pdata);
           	break;
         	case 2:
-          	delete [] reinterpret_cast<short**>(_matrix);
+          	delete [] reinterpret_cast<short**>(_pdata);
           	break;
         	case 4:
-          	delete [] reinterpret_cast<int**>(_matrix);
+          	delete [] reinterpret_cast<int**>(_pdata);
           	break;
         	case 8:
-          	delete [] reinterpret_cast<double**>(_matrix);
-      	}
-    	}
+          	delete [] reinterpret_cast<double**>(_pdata);
+      	    }
+    	  }
+  	} 
+    else 
+    {             // not _sepCols
+      if (_sharedCounter.get() == 1) 
+      {
+     	  shared_memory_object::remove(_sharedName.c_str());
+        if (!_preserve)
+        {
+     	    unlink( _fileName.c_str() );
+        }
+      }
   	}
-  	else
-  	{
-    	if (_sharedCounter.get() == 1)
-    	{
-      	shared_memory_object::remove(_sharedName.c_str());
-    		if (!_preserve)
-    		{
-      		unlink( _fileName.c_str() );
-    		}
-    	}
-  	}
+
+        // In all cases, do the following:
   	if (_sharedCounter.get() == 1)
   	{
-    	long i;
-    	for (i=0; i < static_cast<long>(_mutexPtrs.size()); ++i)
-    	{
-      	_mutexPtrs[i]->destroy();
-    	}
-    	_mutexLock.destroy();
+      long i;
+      for (i=0; i < static_cast<long>(_mutexPtrs.size()); ++i)
+      {
+     	  _mutexPtrs[i]->destroy();
+      }
+      _mutexLock.destroy();
   	}
   	mutex.unlock();
   	named_mutex::remove((_sharedName+"_counter_mutex").c_str());
+    _ncol=0;
+    _nrow=0;
+    _matrixRows=0;
+    _matrixCols=0;
+    _colOffset=0;
+    _rowOffset=0;
+    _pdata=0;
+    _colNames.clear();
+    _rowNames.clear();
   	return true;
-	}
+
+	} // end of the try
 	catch(...)
 	{
 		return false;

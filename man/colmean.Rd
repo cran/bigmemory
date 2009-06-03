@@ -1,4 +1,4 @@
-\name{colmean, colmin, colmax, colrange, colvar, colsd, colprod, colsum}
+\name{colmean, colmin, colmax, colrange, colvar, colsd, colprod, colsum, colna}
 \alias{colmean}
 \alias{colmin}
 \alias{colmax}
@@ -7,6 +7,7 @@
 \alias{colsd}
 \alias{colprod}
 \alias{colsum}
+\alias{colna}
 \title{Basic statistics for ``big.matrix'' objects.}
 \description{
 These functions operate on columns of the \code{\link{big.matrix}}.
@@ -20,6 +21,7 @@ colvar(x, cols, na.rm)
 colsd(x, cols, na.rm)
 colsum(x, cols, na.rm)
 colprod(x, cols, na.rm)
+colna(x, cols)
 }
 \arguments{
   \item{x}{a \code{\link{big.matrix}}.}

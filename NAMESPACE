@@ -1,8 +1,8 @@
 import(methods)
 importFrom(utils, head, tail)
 exportClasses(big.matrix,rw.mutex)
-export("[.big.matrix",big.matrix, as.big.matrix, is.big.matrix, is.separated, is.filebacked, shared.big.matrix, filebacked.big.matrix, is.shared, attach.big.matrix, rw.mutex, attach.rw.mutex, rlock, rwlock, unlock, describe, biglm.big.matrix, bigglm.big.matrix, hash.mat, deepcopy, read.big.matrix, write.big.matrix, colsd, colvar, mwhich, colmin, colmax, colrange, colsum, colprod, colmean, binit)
-exportMethods("[<-", dimnames, "dimnames<-", mean, min, max, range, prod, sum, nrow, ncol, summary, print, head, tail, typeof)
+export("[.big.matrix", big.matrix, as.big.matrix, is.big.matrix, is.separated, is.filebacked, shared.big.matrix, filebacked.big.matrix, is.shared, attach.big.matrix, rw.mutex, attach.rw.mutex, rlock, rwlock, unlock, describe, biglm.big.matrix, bigglm.big.matrix, hash.mat, deepcopy, read.big.matrix, write.big.matrix, colsd, colvar, mwhich, colmin, colmax, colrange, colsum, colprod, colmean, binit, big.sub.matrix, colna)
+exportMethods("[<-", dimnames, "dimnames<-", mean, min, max, range, prod, sum, nrow, ncol, summary, print, head, tail, typeof, nebytes, backingpath)
 
 S3method("[",big.matrix)
 

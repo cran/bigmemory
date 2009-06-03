@@ -1,4 +1,4 @@
-\name{big.matrix, shared.big.matrix, filebacked.big.matrix, is.big.matrix, as.big.matrix, is.shared, is.separated, is.filebacked, remove.backing}
+\name{big.matrix, shared.big.matrix, filebacked.big.matrix, is.big.matrix, as.big.matrix, is.shared, is.separated, is.filebacked, remove.backing, nebytes}
 \alias{big.matrix}
 \alias{shared.big.matrix}
 \alias{filebacked.big.matrix}
@@ -8,6 +8,8 @@
 \alias{is.shared}
 \alias{is.filebacked}
 \alias{[.big.matrix}
+\alias{nebytes}
+\alias{backingpath}
 \title{The core ``big.matrix'' operations.}
 \description{
 Create a \code{big.matrix} (or check to see if an object is a \code{big.matrix},
@@ -16,20 +18,22 @@ may be in-memory (shared or not), or file backed (which is always shareable).
 }
 \usage{
 big.matrix(nrow, ncol, type = "integer", init = NULL, dimnames = NULL,
-           separated = FALSE, shared = FALSE, 
-           backingfile = NULL, backingpath = NULL, descriptorfile = NULL, preserve = TRUE)
+           separated = FALSE, shared = FALSE, backingfile = NULL, backingpath = NULL,
+           descriptorfile = NULL, preserve = TRUE, nebytes = 0)
 shared.big.matrix(nrow, ncol, type = "integer", init = NULL, dimnames = NULL,
            separated = FALSE, backingfile = NULL, backingpath = NULL, descriptorfile = NULL,
-           preserve = TRUE)
+           preserve = TRUE, nebytes = 0)
 filebacked.big.matrix(nrow, ncol, type = "integer", init = NULL, dimnames = NULL,
            separated = FALSE, backingfile = NULL, backingpath = NULL, descriptorfile = NULL,
-           preserve = TRUE)
+           preserve = TRUE, nebytes = 0)
 as.big.matrix(x, type = NULL, separated = FALSE, shared = FALSE,
               backingfile = NULL, backingpath = NULL, descriptorfile = NULL, preserve = TRUE)
 is.big.matrix(x)
 is.separated(x)
 is.shared(x)
 is.filebacked(x)
+nebytes(x)
+backingpath(x)
 }
 \arguments{
   \item{x}{a \code{matrix} or \code{vector}; if a vector, a one-column \code{big.matrix} is created by \code{as.big.matrix}.}
@@ -44,6 +48,7 @@ is.filebacked(x)
   \item{backingpath}{the path to the directory containing the file backing cache.}
   \item{descriptorfile}{the name of the file to hold the filebacked description, for subsequent use with \code{\link{attach.big.matrix}}; if NULL, the \code{backingfile} is used as the root.  The descriptor file is placed in the same directory as the backing files.}
   \item{preserve}{if this is a filebacked \code{big.matrix}, it is preserved, by default, even after the end of the R session unless this option is set to \code{FALSE}.}
+  \item{nebytes}{undocumented option to support internal experimentation}
 }
 \details{
 A \code{big.matrix} consists of an object in R that does nothing more than point to
@@ -126,6 +131,7 @@ colprod(x)
 colmean(x)
 colvar(x)
 summary(x)
+gc()
 
 x <- as.big.matrix(matrix(-5, 10, 2))
 colnames(x) <- c("alpha", "beta")
@@ -135,6 +141,7 @@ colnames(x)
 rownames(x)
 x[1:8,1] <- 11:18
 x[,]
+gc()
 
 # The following shared memory example is quite silly, as you wouldn't likely do
 # this in a single R session.  But if zdescription were passed to another R session
@@ -155,6 +162,7 @@ z
 y[1,1] <- -100
 y[,]
 z[,]
+gc()
 
 # A short filebacked example, showing the creation of associated files and mutexes:
 files <- dir()
