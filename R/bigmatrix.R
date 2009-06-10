@@ -602,15 +602,16 @@ setMethod('read.big.matrix', signature(fileName='character'),
       colNames <- c(colNames, extraCols)
     }
     if (shared | !is.null(backingfile)) {
+#### 3.8
       bigMat <- shared.big.matrix(nrow=numRows, ncol=createCols, type=type,
-                                  dimnames=list(rowNames, NULL), init=NULL, 
+                                  dimnames=list(rowNames, colNames), init=NULL, 
                                   separated=separated, backingfile=backingfile,
                                   backingpath=backingpath,
                                   descriptorfile=descriptorfile,
                                   preserve=preserve)
     } else {
       bigMat <- big.matrix(nrow=numRows, ncol=createCols, type=type, 
-                           dimnames=list(rowNames, NULL), init=NULL)
+                           dimnames=list(rowNames, colNames), init=NULL)
     } 
     ############################################################
     # if userowNames == NULL, then there aren't any in the file.
@@ -619,15 +620,17 @@ setMethod('read.big.matrix', signature(fileName='character'),
     .Call('ReadMatrix', fileName, bigMat@address, 
           as.integer(skip+headerOffset), as.integer(numRows), 
           as.integer(numCols), sep, hasRowNames, userowNames)
-    # Note: if extra column names are specified, the big.matrix object
-    # doesn't have all of its column names.
-    if (is.character(colNames) && length(colNames) == ncol(bigMat)) {
-      .Call("SetColumnNames", bigMat@address, colNames)
-    }
-    if (header && is.filebacked(bigMat)) 
-		{
-			dput(describe(paste(fix_backingpath(backingpath),descriptorfile,sep='')))
-		}
+
+###### 3.8
+#    # Note: if extra column names are specified, the big.matrix object
+#    # doesn't have all of its column names.
+#    if (is.character(colNames) && length(colNames) == ncol(bigMat)) {
+#      .Call("SetColumnNames", bigMat@address, colNames)
+#    }
+#    if (header && is.filebacked(bigMat)) 
+#		{
+#			dput(describe(paste(fix_backingpath(backingpath),descriptorfile,sep='')))
+#		}
     return(bigMat)
   })
 
