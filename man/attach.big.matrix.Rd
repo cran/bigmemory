@@ -17,8 +17,8 @@ attach.big.matrix(obj, backingpath='')
 }
 \arguments{
   \item{x}{a shared \code{\link{big.matrix}}.}
-  \item{obj}{an object as returned by \code{describe()}.}
-  \item{backingpath}{the path where the descriptor can be found.}
+  \item{obj}{an object as returned by \code{describe()} or, optionally, the filename of the descriptor for a filebacked matrix, assumed to be in the directory specified by the \code{backingpath} (if one is provided).}
+  \item{backingpath}{the path where the descriptor and/or filebacking can be found.}
 }
 \details{
 After a shared (possible file-backed)

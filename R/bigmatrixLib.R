@@ -29,8 +29,9 @@ setGeneric('colmin', function(x, cols=NULL, na.rm=FALSE)
 setMethod('colmin', signature(x='big.matrix'),
   function(x, cols=NULL, na.rm=FALSE) {
     thistype = .Call("CGetType", x@address)
-    if (is.null(cols)) cols = 1:ncol(x)
-    if (is.character(cols)) cols <- mmap(cols, colnames(x))
+    cols <- cleanupcols(cols, ncol(x), colnames(x))
+    #if (is.null(cols)) cols = 1:ncol(x)
+    #if (is.character(cols)) cols <- mmap(cols, colnames(x))
     if (is.shared(x) && options()$rlock.enabled)
       lockcols(x, cols, 'r')
     ret = .Call("CMinColmain", as.integer(thistype), x@address, 
@@ -54,8 +55,9 @@ setGeneric('colmax', function(x, cols=NULL, na.rm=FALSE)
 setMethod('colmax', signature(x='big.matrix'),
   function(x, cols=NULL, na.rm=FALSE) {
     thistype = .Call("CGetType", x@address)
-    if (is.null(cols)) cols = 1:ncol(x)
-    if (is.character(cols)) cols <- mmap(cols, colnames(x))
+    cols <- cleanupcols(cols, ncol(x), colnames(x))
+    #if (is.null(cols)) cols = 1:ncol(x)
+    #if (is.character(cols)) cols <- mmap(cols, colnames(x))
     if (is.shared(x) && options()$rlock.enabled)
       lockcols(x, cols, 'r')
     ret = .Call("CMaxColmain", as.integer(thistype), 
@@ -80,8 +82,9 @@ setGeneric('colprod', function(x, cols=NULL, na.rm=FALSE)
 # TODO: Can this be optimized to go through a set of rows only once?
 setMethod('colprod', signature(x='big.matrix'),
   function(x, cols=NULL, na.rm=FALSE) {
-    if (is.null(cols)) cols = 1:ncol(x)
-    if (is.character(cols)) cols <- mmap(cols, colnames(x))
+    cols <- cleanupcols(cols, ncol(x), colnames(x))
+    #if (is.null(cols)) cols = 1:ncol(x)
+    #if (is.character(cols)) cols <- mmap(cols, colnames(x))
     thistype = .Call("CGetType", x@address)
     if (is.shared(x) && options()$rlock.enabled)
       lockcols(x, cols, 'r')
@@ -104,8 +107,9 @@ setGeneric('colsum', function(x, cols=NULL, na.rm=FALSE)
 
 setMethod('colsum', signature(x='big.matrix'),
   function(x, cols=NULL, na.rm=FALSE) {
-    if (is.null(cols)) cols = 1:ncol(x)
-    if (is.character(cols)) cols <- mmap(cols, colnames(x))
+    cols <- cleanupcols(cols, ncol(x), colnames(x))
+    #if (is.null(cols)) cols = 1:ncol(x)
+    #if (is.character(cols)) cols <- mmap(cols, colnames(x))
     thistype = .Call("CGetType", x@address)
     if (is.shared(x) && options()$rlock.enabled)
       lockcols(x, cols, 'r')
@@ -129,8 +133,9 @@ setGeneric('colrange', function(x, cols=NULL, na.rm=FALSE)
 
 setMethod('colrange', signature(x='big.matrix'),
   function(x, cols=NULL, na.rm=FALSE) {
-    if (is.null(cols)) cols = 1:ncol(x)
-    if (is.character(cols)) cols <- mmap(cols, colnames(x))
+    cols <- cleanupcols(cols, ncol(x), colnames(x))
+    #if (is.null(cols)) cols = 1:ncol(x)
+    #if (is.character(cols)) cols <- mmap(cols, colnames(x))
     if (is.shared(x) && options()$rlock.enabled)
       lockcols(x, cols, 'r')
     ret = matrix(c(colmin(x,cols=cols,na.rm=na.rm), 
@@ -164,8 +169,9 @@ setGeneric('colmean', function(x, cols=NULL, na.rm=FALSE)
 setMethod('colmean', signature(x='big.matrix'),
   function(x, cols=NULL, na.rm=FALSE) 
   {
-    if (is.null(cols)) cols=1:ncol(x)
-    if (is.character(cols)) cols <- mmap(cols, colnames(x))
+    cols <- cleanupcols(cols, ncol(x), colnames(x))
+    #if (is.null(cols)) cols=1:ncol(x)
+    #if (is.character(cols)) cols <- mmap(cols, colnames(x))
     if (is.shared(x) && options()$rlock.enabled)
       lockcols(x, cols, 'r')
     thistype = .Call("CGetType", x@address)
@@ -191,8 +197,9 @@ setMethod('colvar', signature(x='big.matrix'),
   function(x, cols=NULL, na.rm=FALSE)
   {
     if (!is.big.matrix(x)) stop("Unknown type.")
-    if (is.null(cols)) cols = 1:ncol(x)
-    if (is.character(cols)) cols <- mmap(cols, colnames(x))
+    cols <- cleanupcols(cols, ncol(x), colnames(x))
+    #if (is.null(cols)) cols = 1:ncol(x)
+    #if (is.character(cols)) cols <- mmap(cols, colnames(x))
     if (is.shared(x) && options()$rlock.enabled)
       lockcols(x, cols, 'r')
     thistype = .Call("CGetType", x@address)
@@ -219,8 +226,9 @@ setGeneric('colna', function(x, cols=NULL) standardGeneric('colna'))
 setMethod('colna', signature(x='big.matrix'),
   function(x, cols=NULL)
   {
-    if (is.null(cols)) cols = 1:ncol(x)
-    if (is.character(cols)) cols <- mmap(cols, colnames(x))
+    cols <- cleanupcols(cols, ncol(x), colnames(x))
+    #if (is.null(cols)) cols = 1:ncol(x)
+    #if (is.character(cols)) cols <- mmap(cols, colnames(x))
     cols = as.double(cols)
     if (is.shared(x) && options()$rlock.enabled)
       lockcols(x, cols, 'r')

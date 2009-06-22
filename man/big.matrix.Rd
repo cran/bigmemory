@@ -167,10 +167,17 @@ gc()
 # A short filebacked example, showing the creation of associated files and mutexes:
 files <- dir()
 files[grep("example.bin", files)]
-z <- filebacked.big.matrix(3, 3, type='integer', init=123, backingfile="example.bin", dimnames=list( c('a','b','c'), c('d', 'e', 'f')))
+z <- filebacked.big.matrix(3, 3, type='integer', init=123, backingfile="example.bin",
+                           descriptorfile="example.desc",
+                           dimnames=list( c('a','b','c'), c('d', 'e', 'f')))
 z[,]
 files <- dir()
 files[grep("example.bin", files)]
+zz <- attach.big.matrix("example.desc")
+zz[,]
+zz[1,1] <- 0
+zzz <- attach.big.matrix(describe(z))
+zzz[,]
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

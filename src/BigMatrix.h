@@ -2,7 +2,7 @@
  *  bigmemory: an R package for managing massive matrices using C,
  *  with support for shared memory.
  *
- *  Copyright (C) 2008 John W. Emerson and Michael J. Kane
+ *  Copyright (C) 2009 John W. Emerson and Michael J. Kane
  *
  *  This file is part of bigmemory.
  *
@@ -49,7 +49,7 @@ class BigMatrix : public boost::noncopyable
   // Constructor and Destructor
   public:
     BigMatrix():_ncol(0),_nrow(0), _matrixRows(0), _matrixCols(0),
-				_colOffset(0), _rowOffset(0),_nebytes(0),_matType(0),
+				_nebytes(0),_matType(0),
                 _pdata(NULL),_sepCols(false){};
     virtual ~BigMatrix(){};
 
@@ -63,8 +63,6 @@ class BigMatrix : public boost::noncopyable
     long nrow() const {return _nrow;};
     long num_rows() const {return _matrixRows;};
     long num_columns() const {return _matrixCols;};
-		long col_offset() const {return _colOffset;};
-		long row_offset() const {return _rowOffset;};
     long nebytes() const {return _nebytes;};
     int matrix_type() const {return _matType;};
     bool shared() const {return _shared;}; 
@@ -74,8 +72,8 @@ class BigMatrix : public boost::noncopyable
 			Names ret;
       if (!_colNames.empty())
       {
-			  std::copy( _colNames.begin()+col_offset(), 
-								  _colNames.begin()+col_offset()+ncol(),
+			  std::copy( _colNames.begin(), 
+								  _colNames.begin()+ncol(),
 								  std::back_inserter(ret) );
       }
 			return ret;
@@ -84,11 +82,11 @@ class BigMatrix : public boost::noncopyable
     Names row_names() 
 		{
 			Names ret;
-			ret.reserve(nrow());
       if (!_rowNames.empty())
       {
-			  std::copy( _rowNames.begin()+row_offset(), 
-								  _rowNames.begin()+row_offset()+nrow(),
+				ret.reserve(nrow());
+			  std::copy( _rowNames.begin(), 
+								  _rowNames.begin()+nrow(),
 								  std::back_inserter(ret) );
       }
 			return ret;
@@ -106,18 +104,6 @@ class BigMatrix : public boost::noncopyable
       return true;
     };
   
-    bool col_offset( long newOffset ) 
-    {
-      _colOffset=newOffset;
-      return true;
-    }
-		
-    bool row_offset( long newOffset )
-    {
-      _rowOffset=newOffset;
-      return true;
-    }
-    
     bool ncol( long newNumCols )
     {
       _ncol=newNumCols;
@@ -139,8 +125,6 @@ class BigMatrix : public boost::noncopyable
     long _nrow;
 		long _matrixRows;
 		long _matrixCols;
-		long _colOffset;
-		long _rowOffset;
     long _nebytes;
     int _matType;
     void* _pdata;

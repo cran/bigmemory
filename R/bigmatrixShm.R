@@ -67,15 +67,6 @@ setMethod('backingpath', signature(x='big.matrix'),
     return(.Call('GetFileBackedPath',x@address))
   })
 
-setGeneric('is.sub.matrix', function(x)
-	standardGeneric('is.sub.matrix'))
-
-setMethod('is.sub.matrix', signature(x='big.matrix'),
-	function(x)
-	{
-		return(.Call('CIsSubMatrix', x@address))
-	})
-
 setGeneric('describe', function(x) 
   standardGeneric('describe'))
 
@@ -103,34 +94,6 @@ unlock = function(x)
 {
   .Call('UnlockUserRWMutex', x@address)
   invisible(NULL)
-}
-
-# For now a submatrix only goes over a range of columns and a range
-# of row.  This could be made more sophiticated but it would probably
-# take a lot of work.
-# Do I want to pass the big matrix or a descriptor?
-big.sub.matrix <- function( descriptor, firstRow=1, lastRow=NULL, 
-  firstCol=1, lastCol=NULL, backingpath='' )
-{
-  rowOffset <- firstRow-1
-  colOffset <- firstCol-1
-  rbm <- attach.big.matrix(descriptor, backingpath)
-  if (is.null(lastRow)) lastRow <- nrow(rbm)
-  if (is.null(lastCol)) lastCol <- ncol(rbm)
-  numCols <- lastCol-firstCol+1
-  numRows <- lastRow-firstRow+1
-  if (colOffset < 0 || rowOffset < 0 || numCols < 1 || numRows < 1 ||
-    colOffset+numCols > ncol(rbm) || rowOffset+numRows > nrow(rbm))
-  {
-    rm(rbm)
-    stop(paste("A big.sub.matrix object could not be created",
-               "with the specified parameters"))
-  }
-  .Call("SetRowOffsetInfo", rbm@address, as.double(rowOffset), 
-        as.double(numRows) )
-  .Call("SetColumnOffsetInfo", rbm@address, as.double(colOffset),
-        as.double(numCols))
-  return(rbm)
 }
 
 shared.big.matrix = function(nrow, ncol, type='integer', init=NULL, 
@@ -241,10 +204,6 @@ filebacked.big.matrix=function(nrow, ncol, type='integer', init=NULL,
 setMethod('describe', signature(x='big.matrix'),
   function(x)
   {
-		if (is.sub.matrix(x))
-		{
-			stop("You cannot describe a big.sub.matrix instance.")
-		}
     return(DescribeBigSharedMatrix(x))
   })
 
@@ -272,8 +231,13 @@ attach.big.matrix = function(obj, backingpath='')
 {
   if (is.list(obj)) 
     info <- obj
-  else 
-    stop("Error in AttachBigSharedMatrix: argument is not a list.\n")
+  else {
+    if (is.character(obj))
+      info <- dget(paste(fix_backingpath(backingpath), obj, sep=""))
+    else
+      stop(paste("Error in AttachBigSharedMatrix: argument is not a list",
+                 "or descriptor filename.\n"))
+  }
 
   typeLength=NULL
   if (info$type == 'integer') 
@@ -327,11 +291,12 @@ setGeneric('lockcols', function(x, cols=NULL, lockType='r')
 setMethod('lockcols', signature(x='big.matrix', lockType='character'),
   function(x, cols=NULL, lockType='r')
   {
-    if(is.null(cols))
-      cols = 1:ncol(x)
-    else if (is.character(cols)) 
-      cols <- mmap(cols, colnames(x))
-		cols = abs(cols)
+    cols <- cleanupcols(cols, ncol(x), colnames(x))
+    #if(is.null(cols))
+    #  cols = 1:ncol(x)
+    #else if (is.character(cols)) 
+    #  cols <- mmap(cols, colnames(x))
+		#cols = abs(cols)
 		cols = cols[ cols >= 1 & cols <= ncol(x)]
     if (lockType != 'r' & lockType != 'w')
       stop('Unknow lock type')
@@ -374,12 +339,14 @@ setGeneric('unlockcols', function(x, cols=NULL) standardGeneric('unlockcols'))
 setMethod('unlockcols', signature(x='big.matrix'),
   function(x, cols=NULL)
   {
-    if (is.null(cols))
-      cols = 1:ncol(x)
-    else if (is.character(cols)) 
-      cols <- mmap(cols, colnames(x))
-		cols = abs(cols)
+    cols <- cleanupcols(cols, ncol(x), colnames(x))
+    #if (is.null(cols))
+    #  cols = 1:ncol(x)
+    #else if (is.character(cols)) 
+    #  cols <- mmap(cols, colnames(x))
+		#cols = abs(cols)
 		cols = cols[ cols >= 1 & cols <= ncol(x)]
     .Call('BigMatrixRelease', x@address, as.double(cols))
     invisible(NULL)
   })
+

@@ -46,7 +46,7 @@ big.matrix <- function(nrow, ncol, type='integer', init=NULL, dimnames=NULL,
                      as.logical(separated), as.double(nebytes))
     if (is.null(address))
       stop(paste("Error: Memory could not be allocated for instance of",
-		 "type big.matrix", sep=' '))
+		             "type big.matrix", sep=' '))
     x <- new("big.matrix", address=address)
     if (is.null(x))
       stop("Error encountered when creating instance of type big.matrix")
@@ -55,11 +55,6 @@ big.matrix <- function(nrow, ncol, type='integer', init=NULL, dimnames=NULL,
   }
   else
   {
-    #if (!is.null(backingpath)) {
-    #  if (substr(backingpath, nchar(backingpath), nchar(backingpath)) != '/' ||
-    #   substr(backingpath, nchar(backingpath)-1, nchar(backingpath)) != '\\')
-    #    backingfile <- paste(backingpath, '/', sep='')
-    #}
     return(shared.big.matrix(nrow=nrow, ncol=ncol, type=type, init=init, 
            dimnames=dimnames, separated=separated, backingfile=backingfile, 
            backingpath=backingpath, descriptorfile=descriptorfile, 
@@ -171,40 +166,258 @@ setMethod('nrow', signature(x="big.matrix"),
 setMethod('dim', signature(x="big.matrix"),
   function(x) return(c(nrow(x), ncol(x))))
 
-'[.big.matrix' <- function(x, i=NULL, j=NULL)
+GetElements.bm <- function(x, i, j, drop=TRUE)
 {
+  if (!is.numeric(i) & !is.character(i) & !is.logical(i))
+    stop("row indices must be numeric, logical, or character vectors.")
+  if (!is.numeric(j) & !is.character(j) & !is.logical(j))
+    stop("column indices must be numeric, logical, or character vectors.")
+  if (is.character(i))
+    if (is.null(rownames(x))) stop("row names do not exist.")
+    else i <- mmap(i, rownames(x))
+  if (is.character(j))
+    if (is.null(colnames(x))) stop("column names do not exist.")
+    else j <- mmap(j, colnames(x))
+  if (is.logical(i)) {
+    if (length(i) != nrow(x))
+      stop("row vector length must match the number of rows of the matrix.")
+    i <- which(i)
+  }
+  if (is.logical(j)) {
+    if (length(j) != ncol(x))
+      stop(paste("column vector length must match the number of",
+                 "columns of the matrix."))
+    j <- which(j)
+  }
+
+  tempi <- .Call("CCleanIndices", as.double(i), as.double(nrow(x)))
+  if (is.null(tempi[[1]])) stop("Illegal row index usage in extraction.\n")
+  if (tempi[[1]]) i <- tempi[[2]]
+  tempj <- .Call("CCleanIndices", as.double(j), as.double(ncol(x)))
+  if (is.null(tempj[[1]])) stop("Illegal column index usage in extraction.\n")
+  if (tempj[[1]]) j <- tempj[[2]]
+
   if (is.shared(x) && options()$rlock.enabled) lockcols(x, j, 'r')
-  retList <- .Call("GetMatrixElements", x@address, j, i)
+  retList <- .Call("GetMatrixElements", x@address, as.double(j), as.double(i))
+  if (is.shared(x) && options()$rlock.enabled) unlockcols(x,j)
 
   dimnames(retList[[1]]) <- list( retList[[2]], retList[[3]] )
-  if (sum(dim(retList[[1]])==1) > 0) retList[[1]] = as.vector(retList[[1]])
-  if (is.shared(x) && options()$rlock.enabled) unlockcols(x,j)
+  if (drop) {
+    if (any(dim(retList[[1]])==1)) {
+      if (dim(retList[[1]])[1]!=1 || dim(retList[[1]])[2]!=1) {
+        if (dim(retList[[1]])[1]==1) {
+          thesenames <- retList[[3]]
+        } else thesenames <- retList[[2]]
+      } else thesenames <- NULL
+      retList[[1]] = as.vector(retList[[1]])
+      names(retList[[1]]) <- thesenames
+    }
+  }
   return(retList[[1]])
 }
 
-SetFunction.bm <- function(x, i, j, value)
+GetCols.bm <- function(x, j, drop=TRUE)
 {
+  if (!is.numeric(j) & !is.character(j) & !is.logical(j))
+    stop("column indices must be numeric, logical, or character vectors.")
+  if (is.character(j))
+    if (is.null(colnames(x))) stop("column names do not exist.")
+    else j <- mmap(j, colnames(x))
+  if (is.logical(j)) {
+    if (length(j) != ncol(x))
+      stop(paste("column vector length must match the number of",
+                 "columns of the matrix."))
+    j <- which(j)
+  }
+
+  tempj <- .Call("CCleanIndices", as.double(j), as.double(ncol(x)))
+  if (is.null(tempj[[1]])) stop("Illegal column index usage in extraction.\n")
+  if (tempj[[1]]) j <- tempj[[2]]
+
+  if (is.shared(x) && options()$rlock.enabled) lockcols(x, j, 'r')
+  retList <- .Call("GetMatrixCols", x@address, as.double(j))
+  if (is.shared(x) && options()$rlock.enabled) unlockcols(x,j)
+
+  dimnames(retList[[1]]) <- list( retList[[2]], retList[[3]] )
+  if (drop) {
+    if (any(dim(retList[[1]])==1)) {
+      if (dim(retList[[1]])[1]!=1 || dim(retList[[1]])[2]!=1) {
+        if (dim(retList[[1]])[1]==1) {
+          thesenames <- retList[[3]]
+        } else thesenames <- retList[[2]]
+      } else thesenames <- NULL
+      retList[[1]] = as.vector(retList[[1]])
+      names(retList[[1]]) <- thesenames
+    }
+  }
+  return(retList[[1]])
+}
+
+GetRows.bm <- function(x, i, drop=TRUE)
+{
+  if (!is.numeric(i) & !is.character(i) & !is.logical(i))
+    stop("row indices must be numeric, logical, or character vectors.")
+  if (is.character(i))
+    if (is.null(rownames(x))) stop("row names do not exist.")
+    else i <- mmap(i, rownames(x))
+  if (is.logical(i)) {
+    if (length(i) != nrow(x))
+      stop("row vector length must match the number of rows of the matrix.")
+    i <- which(i)
+  }
+
+  tempi <- .Call("CCleanIndices", as.double(i), as.double(nrow(x)))
+  if (is.null(tempi[[1]])) stop("Illegal row index usage in extraction.\n")
+  if (tempi[[1]]) i <- tempi[[2]]
+
+  if (is.shared(x) && options()$rlock.enabled) lockcols(x, 1:ncol(x), 'r')
+  retList <- .Call("GetMatrixRows", x@address, as.double(i))
+  if (is.shared(x) && options()$rlock.enabled) unlockcols(x, 1:ncol(x))
+
+  dimnames(retList[[1]]) <- list( retList[[2]], retList[[3]] )
+  if (drop) {
+    if (any(dim(retList[[1]])==1)) {
+      if (dim(retList[[1]])[1]!=1 || dim(retList[[1]])[2]!=1) {
+        if (dim(retList[[1]])[1]==1) {
+          thesenames <- retList[[3]]
+        } else thesenames <- retList[[2]]
+      } else thesenames <- NULL
+      retList[[1]] = as.vector(retList[[1]])
+      names(retList[[1]]) <- thesenames
+    }
+  }
+  return(retList[[1]])
+}
+
+GetAll.bm <- function(x, drop=TRUE)
+{
+  # Note here the locks are handled in the signature, because there
+  # is no index cleaning to be done.
+
+  retList <- .Call("GetMatrixAll", x@address)
+
+  dimnames(retList[[1]]) <- list( retList[[2]], retList[[3]] )
+  if (drop) {
+    if (any(dim(retList[[1]])==1)) {
+      if (dim(retList[[1]])[1]!=1 || dim(retList[[1]])[2]!=1) {
+        if (dim(retList[[1]])[1]==1) {
+          thesenames <- retList[[3]]
+        } else thesenames <- retList[[2]]
+      } else thesenames <- NULL
+      retList[[1]] = as.vector(retList[[1]])
+      names(retList[[1]]) <- thesenames
+    }
+  }
+  return(retList[[1]])
+}
+
+setMethod("[",
+  signature(x = "big.matrix", drop = "missing"),
+  function(x, i, j) {
+    return(GetElements.bm(x, i, j))
+  })
+
+setMethod("[",
+  signature(x = "big.matrix", drop = "logical"),
+  function(x, i, j, drop) {
+    return(GetElements.bm(x, i, j, drop))
+  })
+
+setMethod("[",
+  signature(x = "big.matrix", i="missing", drop = "missing"),
+  function(x, j) {
+    return(GetCols.bm(x, j))
+  })
+
+setMethod("[",
+  signature(x = "big.matrix", i="missing", drop = "logical"),
+  function(x, j, drop) {
+    return(GetCols.bm(x, j, drop))
+  })
+
+setMethod("[",
+  signature(x = "big.matrix", j="missing", drop = "missing"),
+  function(x, i) {
+    return(GetRows.bm(x, i))
+  })
+
+setMethod("[",
+  signature(x = "big.matrix", j="missing", drop = "logical"),
+  function(x, i, drop) {
+    return(GetRows.bm(x, i, drop))
+  })
+
+# Because we don't have any index checking/fixing, we do our locking here.
+setMethod("[",
+  signature(x = "big.matrix", i="missing", j="missing", drop = "missing"),
+  function(x) {
+    if (is.shared(x) && options()$rlock.enabled) lockcols(x,1:ncol(x),'r')
+    ret <- GetAll.bm(x)
+    if (is.shared(x) && options()$rlock.enabled) unlockcols(x,1:ncol(x))
+    return(ret)
+})
+
+# Because we don't have any index checking/fixing, we do our locking here.
+setMethod("[",
+  signature(x = "big.matrix", i="missing", j="missing", drop = "logical"),
+  function(x, drop) {
+    if (is.shared(x) && options()$rlock.enabled) lockcols(x,1:ncol(x),'r')
+    ret <- GetAll.bm(x, drop)
+    if (is.shared(x) && options()$rlock.enabled) unlockcols(x,1:ncol(x))
+    return(ret)
+})
+
+SetElements.bm <- function(x, i, j, value)
+{
+  if (!is.numeric(i) & !is.character(i) & !is.logical(i))
+    stop("row indices must be numeric, logical, or character vectors.")
+  if (!is.numeric(j) & !is.character(j) & !is.logical(j))
+    stop("column indices must be numeric, logical, or character vectors.")
+  if (is.character(i))
+    if (is.null(rownames(x))) stop("row names do not exist.")
+    else i <- mmap(i, rownames(x))
+  if (is.character(j))
+    if (is.null(colnames(x))) stop("column names do not exist.")
+    else j <- mmap(j, colnames(x))
+  if (is.logical(i)) {
+    if (length(i) != nrow(x))
+      stop("row vector length must match the number of rows of the matrix.")
+    i <- which(i)
+  }
+  if (is.logical(j)) {
+    if (length(j) != ncol(x))
+      stop(paste("column vector length must match the number of",
+                 "columns of the matrix."))
+    j <- which(j)
+  }
+
+  tempi <- .Call("CCleanIndices", as.double(i), as.double(nrow(x)))
+  if (is.null(tempi[[1]])) stop("Illegal row index usage in extraction.\n")
+  if (tempi[[1]]) i <- tempi[[2]]
+  tempj <- .Call("CCleanIndices", as.double(j), as.double(ncol(x)))
+  if (is.null(tempj[[1]])) stop("Illegal column index usage in extraction.\n")
+  if (tempj[[1]]) j <- tempj[[2]]
+
+  if ( options()$bigmemory.typecast.warning &&
+       (((typeof(value) == "double") && (typeof(x) != "double") ||
+       (typeof(value) == "integer" &&
+        (typeof(x) != "double" && typeof(x) != "integer")))) )
+    warning(cat("Assignment will down cast from ", typeof(value), " to ",
+                typeof(x), "\nHint: To remove this warning type:  ",
+                "options(bigmemory.typecast.warning=FALSE)\n", sep=''))
+
+  # Note: i may be a mwhich statement in which case we _must_ ensure
+  # that we disable read locking before it is evaluated or we will
+  # have a race condition.  - Jay and Mike.
   if (is.shared(x)) {
     options(rlock.enabled=FALSE)
     lockcols(x, j, 'w')
   }
-  # Note: i may be a mwhich statement in which case we _must_ ensure
-  # that we disable read locking before it is evaluated or we will
-  # have a race condition.  - Jay and Mike.
-  if (max(j) > ncol(x) | min(j) < 1 | max(i) > nrow(x) | min(i) < 1) {
-    if (is.shared(x)) {
-      unlockcols(x, j)
-      options(rlock.enabled=TRUE)
-    }
-    stop('Indices out of range')
-  }
 
-  totelts <- as.numeric(length(i)) * as.numeric(length(j))
+  totelts <- length(i) * length(j)
   # If we are assigning from a matrix, make sure the dimensions agree.
   if (is.matrix(value)){
-    if (ncol(value) != length(j) | nrow(value) != length(i))
-    {
-      cat("ERROR check", ncol(x), length(j), nrow(x), length(i), "\n")
+    if (ncol(value) != length(j) | nrow(value) != length(i)) {
       if (is.shared(x)) {
         options(rlock.enabled=TRUE)
         unlockcols(x, j)
@@ -215,14 +428,15 @@ SetFunction.bm <- function(x, i, j, value)
     # Otherwise, make sure we are assigning the correct number of things
     # (rep if necessary)
     numReps <- totelts / length(value)
-    if (numReps != round(numReps))
+    if (numReps != round(numReps)) {
+      if (is.shared(x)) {
+        options(rlock.enabled=TRUE)
+        unlockcols(x, j)
+      }
       stop("number of items to replace is not a multiple of replacement length")
-    if (totelts > .Machine$integer.max)
-      stop("Too large an assignment for this version of R.\n")
-    value <- rep(value, numReps)
+    }
   }
-  if (typeof(x) != 'double')
-  {
+  if (typeof(x) != 'double') {
     integerVals = na.omit(as.integer(value))
     if ( sum(integerVals == na.omit(as.integer(value))) !=
          length(integerVals) | is.factor(value)) {
@@ -244,52 +458,240 @@ SetFunction.bm <- function(x, i, j, value)
   return(x)
 }
 
+SetCols.bm <- function(x, j, value)
+{
+  if (!is.numeric(j) & !is.character(j) & !is.logical(j))
+    stop("column indices must be numeric, logical, or character vectors.")
+  if (is.character(j))
+    if (is.null(colnames(x))) stop("column names do not exist.")
+    else j <- mmap(j, colnames(x))
+  if (is.logical(j)) {
+    if (length(j) != ncol(x))
+      stop(paste("column vector length must match the number of",
+                 "columns of the matrix."))
+    j <- which(j)
+  }
+
+  tempj <- .Call("CCleanIndices", as.double(j), as.double(ncol(x)))
+  if (is.null(tempj[[1]])) stop("Illegal column index usage in extraction.\n")
+  if (tempj[[1]]) j <- tempj[[2]]
+
+  if ( options()$bigmemory.typecast.warning &&
+       ((typeof(value) == "double") && (typeof(x) != "double") ||
+       (typeof(value) == "integer" &&
+        (typeof(x) != "double" && typeof(x) != "integer"))) )
+    warning(cat("Assignment will down cast from ", typeof(value), " to ",
+                typeof(x), "\nHint: To remove this warning type:  ",
+                "options(bigmemory.typecast.warning=FALSE)\n", sep=''))
+
+  # Note: i may be a mwhich statement in which case we _must_ ensure
+  # that we disable read locking before it is evaluated or we will
+  # have a race condition.  - Jay and Mike.
+  if (is.shared(x)) {
+    options(rlock.enabled=FALSE)
+    lockcols(x, j, 'w')
+  }
+
+  totelts <- nrow(x) * length(j)
+  # If we are assigning from a matrix, make sure the dimensions agree.
+  if (is.matrix(value)){
+    if (ncol(value) != length(j) | nrow(value) != nrow(x)) {
+      if (is.shared(x)) {
+        options(rlock.enabled=TRUE)
+        unlockcols(x, j)
+      }
+      stop("Matrix dimensions do not agree with big.matrix instance set size.")
+    }
+  } else if (length(value) != totelts) {
+    # Otherwise, make sure we are assigning the correct number of things
+    # (rep if necessary)
+    numReps <- totelts / length(value)
+    if (numReps != round(numReps)) {
+      if (is.shared(x)) {
+        options(rlock.enabled=TRUE)
+        unlockcols(x, j)
+      }
+      stop("number of items to replace is not a multiple of replacement length")
+    }
+  }
+  if (typeof(x) != 'double') {
+    integerVals = na.omit(as.integer(value))
+    if ( sum(integerVals == na.omit(as.integer(value))) !=
+         length(integerVals) | is.factor(value)) {
+      warning("non-integer (possibly Inf or -Inf) typecast to integer")
+    }
+  }
+  # Note: we pass doubles as doubles, but anything else as integers.
+  if (typeof(x) == 'double') {
+    .Call("SetMatrixCols", x@address, as.double(j), as.double(value))
+  } else {
+    .Call("SetMatrixCols", x@address, as.double(j), as.integer(value))
+  }
+  if (is.shared(x)) {
+    unlockcols(x,j)
+    options(rlock.enabled=TRUE)
+  }
+  return(x)
+}
+
+SetRows.bm <- function(x, i, value) 
+{
+  if (!is.numeric(i) & !is.character(i) & !is.logical(i))
+    stop("row indices must be numeric, logical, or character vectors.")
+  if (is.character(i))
+    if (is.null(rownames(x))) stop("row names do not exist.")
+    else i <- mmap(i, rownames(x))
+  if (is.logical(i)) {
+    if (length(i) != nrow(x))
+      stop("row vector length must match the number of rows of the matrix.")
+    i <- which(i)
+  }
+
+  tempi <- .Call("CCleanIndices", as.double(i), as.double(nrow(x)))
+  if (is.null(tempi[[1]])) stop("Illegal row index usage in extraction.\n")
+  if (tempi[[1]]) i <- tempi[[2]]
+
+  if ( options()$bigmemory.typecast.warning &&
+       ((typeof(value) == "double") && (typeof(x) != "double") ||
+       (typeof(value) == "integer" &&
+        (typeof(x) != "double" && typeof(x) != "integer"))) )
+    warning(cat("Assignment will down cast from ", typeof(value), " to ",
+                typeof(x), "\nHint: To remove this warning type:  ",
+                "options(bigmemory.typecast.warning=FALSE)\n", sep=''))
+
+  # Note: i may be a mwhich statement in which case we _must_ ensure
+  # that we disable read locking before it is evaluated or we will
+  # have a race condition.  - Jay and Mike.
+  if (is.shared(x)) {
+    options(rlock.enabled=FALSE)
+    lockcols(x, 1:ncol(x), 'w')
+  }
+
+  totelts <- length(i) * ncol(x)
+  # If we are assigning from a matrix, make sure the dimensions agree.
+  if (is.matrix(value)){
+    if (ncol(value) != ncol(x) | nrow(value) != length(i)) {
+      if (is.shared(x)) {
+        options(rlock.enabled=TRUE)
+        unlockcols(x, 1:ncol(x))
+      }
+      stop("Matrix dimensions do not agree with big.matrix instance set size.")
+    }
+  } else if (length(value) != totelts) {
+    # Otherwise, make sure we are assigning the correct number of things
+    # (rep if necessary)
+    numReps <- totelts / length(value)
+    if (numReps != round(numReps)) {
+      if (is.shared(x)) {
+        options(rlock.enabled=TRUE)
+        unlockcols(x, 1:ncol(x))
+      }
+      stop("number of items to replace is not a multiple of replacement length")
+    }
+  }
+  if (typeof(x) != 'double') {
+    integerVals = na.omit(as.integer(value))
+    if ( sum(integerVals == na.omit(as.integer(value))) !=
+         length(integerVals) | is.factor(value)) {
+      warning("non-integer (possibly Inf or -Inf) typecast to integer")
+    }
+  }
+  # Note: we pass doubles as doubles, but anything else as integers.
+  if (typeof(x) == 'double') {
+    .Call("SetMatrixRows", x@address, as.double(i), as.double(value))
+  } else {
+    .Call("SetMatrixRows", x@address, as.double(i), as.integer(value))
+  }
+  if (is.shared(x)) {
+    unlockcols(x,1:ncol(x))
+    options(rlock.enabled=TRUE)
+  }
+  return(x)
+}
+
+SetAll.bm <- function(x, value) 
+{
+  if ( options()$bigmemory.typecast.warning &&
+       ((typeof(value) == "double") && (typeof(x) != "double") ||
+       (typeof(value) == "integer" &&
+        (typeof(x) != "double" && typeof(x) != "integer"))) )
+    warning(cat("Assignment will down cast from ", typeof(value), " to ",
+                typeof(x), "\nHint: To remove this warning type:  ",
+                "options(bigmemory.typecast.warning=FALSE)\n", sep=''))
+
+  # Note: i may be a mwhich statement in which case we _must_ ensure
+  # that we disable read locking before it is evaluated or we will
+  # have a race condition.  - Jay and Mike.
+  if (is.shared(x)) {
+    options(rlock.enabled=FALSE)
+    lockcols(x, 1:ncol(x), 'w')
+  }
+
+  totelts <- nrow(x) * ncol(x)
+  # If we are assigning from a matrix, make sure the dimensions agree.
+  if (is.matrix(value)){
+    if (ncol(value) != ncol(x) | nrow(value) != nrow(x)) {
+      if (is.shared(x)) {
+        options(rlock.enabled=TRUE)
+        unlockcols(x, 1:ncol(x))
+      }
+      stop("Matrix dimensions do not agree with big.matrix instance set size.")
+    }
+  } else if (length(value) != totelts) {
+    # Otherwise, make sure we are assigning the correct number of things
+    # (rep if necessary)
+    numReps <- totelts / length(value)
+    if (numReps != round(numReps)) {
+      if (is.shared(x)) {
+        options(rlock.enabled=TRUE)
+        unlockcols(x, 1:ncol(x))
+      }
+      stop("number of items to replace is not a multiple of replacement length")
+    }
+  }
+  if (typeof(x) != 'double') {
+    integerVals = na.omit(as.integer(value))
+    if ( sum(integerVals == na.omit(as.integer(value))) !=
+         length(integerVals) | is.factor(value)) {
+      warning("non-integer (possibly Inf or -Inf) typecast to integer")
+    }
+  }
+  # Note: we pass doubles as doubles, but anything else as integers.
+  if (typeof(x) == 'double') {
+    .Call("SetMatrixAll", x@address, as.double(value))
+  } else {
+    .Call("SetMatrixAll", x@address, as.integer(value))
+  }
+  if (is.shared(x)) {
+    unlockcols(x,1:ncol(x))
+    options(rlock.enabled=TRUE)
+  }
+  return(x)
+}
+
 setMethod('[<-',
   signature(x = "big.matrix"),
   function(x, i, j, value) {
-    if (!is.numeric(i) & !is.character(i) & !is.logical(i))
-      stop("row indices must be numeric, logical, or character vectors.")
-    if (!is.numeric(j) & !is.character(j) & !is.logical(j))
-      stop("column indices must be numeric, logical, or character vectors.")
-    if (is.character(i))
-      if (is.null(rownames(x))) stop("row names do not exist.")
-      else i <- mmap(i, rownames(x))
-    if (is.character(j))
-      if (is.null(colnames(x))) stop("column names do not exist.")
-      else j <- mmap(j, colnames(x))
-    if (is.logical(i)) {
-      if (length(i) != nrow(x))
-        stop("row vector length must match the number of rows of the matrix.")
-      i <- which(i)
-    }
-    if (is.logical(j)) {
-      if (length(j) != ncol(x))
-        stop(paste("column vector length must match the number of",
-                   "columns of the matrix."))
-      j <- which(j)
-    }
-    if ( options()$bigmemory.typecast.warning &&
-         (typeof(value) == "double") && (typeof(x) != "double") ||
-         (typeof(value) == "integer" && 
-          (typeof(x) != "double" && typeof(x) != "integer")) )
-      warning(cat("Assignment will down cast from ", typeof(value), " to ",
-                  typeof(x), "\nHint: To remove this warning type:  ",
-                  "options(big.memory.typecast.warning=FALSE)\n", sep=''))
-    return(SetFunction.bm(x, i, j, value))
+    return(SetElements.bm(x, i, j, value))
   })
 
 setMethod('[<-',
   signature(x = "big.matrix", i="missing"),
-  function(x, j, value) return('[<-'(x, 1:nrow(x), j, value=value)))
+  function(x, j, value) {
+    return(SetCols.bm(x, j, value))
+  })
 
 setMethod('[<-',
   signature(x = "big.matrix", j="missing"),
-  function(x, i, value) return('[<-'(x, i, 1:ncol(x), value=value)))
+  function(x, i, value) {
+    return(SetRows.bm(x, i, value))
+  })
 
 setMethod('[<-',
   signature(x = "big.matrix", i="missing", j="missing"),
-  function(x, value) return(SetFunction.bm(x, 1:nrow(x), 1:ncol(x),
-                            value=value)))
+  function(x, value) {
+    return(SetAll.bm(x, value))
+  })
 
 setMethod('typeof', signature(x="big.matrix"),
   function(x) return(.Call('GetTypeString', x@address)))
@@ -380,7 +782,7 @@ setMethod('mwhich',
 
 mwhich.internal <- function(x, cols, vals, comps, op, whichFuncName) 
 {
-  if (is.character(cols)) cols <- mmap(cols, colnames.bm(x))
+  cols <- cleanupcols(cols, ncol(x), colnames(x))
   if (is.shared(x) && options()$rlock.enabled) lockcols(x, cols, 'r')
   if (length(setdiff(cols, 1:ncol(x))) > 0)
     stop('Invalid column(s) in which()')
@@ -504,6 +906,7 @@ setMethod('dimnames<-', signature(x = "big.matrix", value='list'),
 
 hash.mat <- function(x, col)
 {
+  col <- cleanupcols(col, ncol(x), colnames(x))
   if (colmin(x, col)<1) 
     stop("Error: minimum value in specified column should be 1 or more.")
   return(matrix(.Call('MatrixHashRanges', x@address, as.double(col)),
@@ -602,7 +1005,6 @@ setMethod('read.big.matrix', signature(fileName='character'),
       colNames <- c(colNames, extraCols)
     }
     if (shared | !is.null(backingfile)) {
-#### 3.8
       bigMat <- shared.big.matrix(nrow=numRows, ncol=createCols, type=type,
                                   dimnames=list(rowNames, colNames), init=NULL, 
                                   separated=separated, backingfile=backingfile,
@@ -621,16 +1023,6 @@ setMethod('read.big.matrix', signature(fileName='character'),
           as.integer(skip+headerOffset), as.integer(numRows), 
           as.integer(numCols), sep, hasRowNames, userowNames)
 
-###### 3.8
-#    # Note: if extra column names are specified, the big.matrix object
-#    # doesn't have all of its column names.
-#    if (is.character(colNames) && length(colNames) == ncol(bigMat)) {
-#      .Call("SetColumnNames", bigMat@address, colNames)
-#    }
-#    if (header && is.filebacked(bigMat)) 
-#		{
-#			dput(describe(paste(fix_backingpath(backingpath),descriptorfile,sep='')))
-#		}
     return(bigMat)
   })
 
@@ -679,20 +1071,44 @@ setMethod('is.separated', signature(x='big.matrix'),
 
 setMethod('is.separated', signature(x='matrix'), function(x) return(FALSE))
 
-deepcopy <- function(x, type=NULL, separated=NULL, shared=NULL, 
-                     backingfile=NULL, backingpath=NULL, preserve=TRUE) 
+cleanupcols <- function(cols=NULL, nc=NULL, colnames=NULL) {
+
+  if (is.null(cols)) cols <- 1:nc
+  else {
+    if (!is.numeric(cols) & !is.character(cols) & !is.logical(cols))
+      stop("column indices must be numeric, logical, or character vectors.")
+    if (is.character(cols))
+      if (is.null(colnames)) stop("column names do not exist.")
+      else cols <- mmap(cols, colnames)
+    if (is.logical(cols)) {
+      if (length(cols) != nc)
+        stop(paste("column vector length must match the number of",
+                   "columns of the matrix."))
+      cols <- which(cols)
+    }
+    tempj <- .Call("CCleanIndices", as.double(cols), as.double(nc))
+    if (is.null(tempj[[1]])) stop("Illegal column index usage in extraction.\n")
+    if (tempj[[1]]) cols <- tempj[[2]]
+  }
+  return(cols)
+}
+
+deepcopy <- function(x, cols=NULL, type=NULL, separated=NULL, shared=NULL, 
+                     backingfile=NULL, backingpath=NULL,
+                     descriptorfile=NULL, preserve=TRUE) 
 {
+  cols <- cleanupcols(cols, ncol(x), colnames(x))
   if (nrow(x) > 2^31-1)
     stop(paste("Too many rows to copy at this point in time;",
                "this may be fixed in the future."))
   if (is.null(type)) type <- typeof(x)
   if (is.null(separated)) separated <- is.separated(x)
   if (is.null(shared)) shared <- is.shared(x)
-  y <- big.matrix(nrow=nrow(x), ncol=ncol(x), type=type, init=NULL,
+  y <- big.matrix(nrow=nrow(x), ncol=length(cols), type=type, init=NULL,
 		  dimnames = dimnames(x), separated=separated, shared=shared,
 		  backingfile=backingfile, backingpath=backingpath,
-                  preserve=preserve)
-  for (i in 1:ncol(x)) y[,i] <- x[,i]
+      descriptorfile=descriptorfile, preserve=preserve)
+  for (i in 1:length(cols)) y[,i] <- x[,cols[i]]
 
   return(y)
 }
