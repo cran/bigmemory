@@ -1,3 +1,26 @@
+/*
+ *  bigmemory: an R package for managing massive matrices using C,
+ *  with support for shared memory.
+ *
+ *  Copyright (C) 2009 John W. Emerson and Michael J. Kane
+ *
+ *  This file is part of bigmemory.
+ *
+ *  bigmemory is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU Lesser General Public License as published
+ *  by the Free Software Foundation; either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with this program; if not, a copy is available at
+ *  http://www.r-project.org/Licenses/
+ */
+
 
 #include <iostream> // hack to make sure we are using the right "length" 
                     // function
@@ -309,11 +332,9 @@ Rboolean tvar(T *x, long n, double *value, Rboolean narm, T NA_VALUE)
   if (pMat->separated_columns())                                             \
   {                                                                          \
     SepBigMatrixAccessor<dataT> Mat(*pMat);                                  \
-    long colOffset=pMat->col_offset();                                       \
-    long rowOffset=pMat->row_offset();                                       \
     long i=0;                                                                \
     for (i=0; i < nCols; ++i) {                                              \
-      fun(Mat[(long)pCols[i]-1+colOffset]+rowOffset, pMat->nrow(), &pRet[i], \
+      fun(Mat[(long)pCols[i]-1], pMat->nrow(), &pRet[i], \
                   (Rboolean)LOGICAL_VALUE(narm), NA_VALUE);                  \
     }                                                                        \
   }                                                                          \
@@ -321,10 +342,8 @@ Rboolean tvar(T *x, long n, double *value, Rboolean narm, T NA_VALUE)
   {                                                                          \
     BigMatrixAccessor<dataT> Mat(*pMat);                                     \
     long i=0;                                                                \
-    long colOffset=pMat->col_offset();                                       \
-    long rowOffset=pMat->row_offset();                                       \
     for (i=0; i < nCols; ++i) {                                              \
-      fun(Mat[(long)pCols[i]-1+colOffset]+rowOffset, pMat->nrow(), &pRet[i], \
+      fun(Mat[(long)pCols[i]-1], pMat->nrow(), &pRet[i], \
                     (Rboolean)LOGICAL_VALUE(narm), NA_VALUE);                \
     }                                                                        \
   }

@@ -2,7 +2,7 @@
  *  bigmemory: an R package for managing massive matrices using C,
  *  with support for shared memory.
  *
- *  Copyright (C) 2008 John W. Emerson and Michael J. Kane
+ *  Copyright (C) 2009 John W. Emerson and Michael J. Kane
  *
  *  This file is part of bigmemory.
  *
@@ -48,48 +48,131 @@ string ttos(T i)
   return s.str();
 }
 
+bool TooManyRIndices( long val )
+{
+  return val > (powl(2, 31)-1);
+}
+
 template<typename CType, typename RType, typename BMAccessorType>
 void SetMatrixElements( BigMatrix *pMat, SEXP col, SEXP row, SEXP values,
   double NA_C, double C_MIN, double C_MAX, double NA_R)
 {
   BMAccessorType mat( *pMat );
-  double *pCol = NUMERIC_DATA(col);
-  long nCol = GET_LENGTH(col);
-  double *pRow = NUMERIC_DATA(row);
-  long nRow = GET_LENGTH(row);
+  double *pCols = NUMERIC_DATA(col);
+  long numCols = GET_LENGTH(col);
+  double *pRows = NUMERIC_DATA(row);
+  long numRows = GET_LENGTH(row);
   bool outOfRange=false;
   VecPtr<RType> vec_ptr;
   RType *pVals = vec_ptr(values);
+	long valLength = GET_LENGTH(values);
   long i=0;
   long j=0;
   long k=0;
-  long lcol=0;
-  long lrow=0;
-	long colOffset = pMat->col_offset();
-	long rowOffset = pMat->row_offset();
-  for (i=0; i < nCol; ++i)
+	CType *pColumn;
+	long kIndex;
+  for (i=0; i < numCols; ++i)
   {
-    for (j=0; j < nRow; ++j)
+		pColumn = mat[static_cast<long>(pCols[i])-1];
+    for (j=0; j < numRows; ++j)
     {
-      lcol = static_cast<long>(pCol[i])-1+colOffset;
-      lrow = static_cast<long>(pRow[j])-1+rowOffset;
-      if (pVals[k] < C_MIN || pVals[k] > C_MAX)
-      {
-        if (!isna(pVals[k]))
-        {
-          outOfRange=true;
-        }
-        mat[lcol][lrow] = static_cast<CType>(NA_C);
-      }
-      else
-      {
-        mat[lcol][lrow] = static_cast<CType>(pVals[k]);
-      }
-      ++k;
+			kIndex = k++%valLength;
+			pColumn[static_cast<long>(pRows[j])-1] =
+				((pVals[kIndex] < C_MIN || pVals[kIndex] > C_MAX) ?
+					static_cast<CType>(NA_C) :
+					static_cast<CType>(pVals[kIndex]));
     }
-    if (outOfRange)
+  }
+}
+
+template<typename CType, typename RType, typename BMAccessorType>
+void SetMatrixAll( BigMatrix *pMat, SEXP values,
+  double NA_C, double C_MIN, double C_MAX, double NA_R)
+{
+  BMAccessorType mat( *pMat );
+  long numCols = pMat->num_columns();
+  long numRows = pMat->num_rows();
+  bool outOfRange=false;
+  VecPtr<RType> vec_ptr;
+  RType *pVals = vec_ptr(values);
+	long valLength = GET_LENGTH(values);
+  long i=0;
+  long j=0;
+  long k=0;
+	CType *pColumn;
+	long kIndex;
+  for (i=0; i < numCols; ++i)
+  {
+		pColumn = mat[i];
+    for (j=0; j < numRows; ++j)
     {
-      warning("Some of the values were out of range, they will be set to NA.");
+			kIndex = k++%valLength;
+			pColumn[j] =
+				((pVals[kIndex] < C_MIN || pVals[kIndex] > C_MAX) ?
+					static_cast<CType>(NA_C) :
+					static_cast<CType>(pVals[kIndex]));
+    }
+  }
+}
+
+template<typename CType, typename RType, typename BMAccessorType>
+void SetMatrixCols( BigMatrix *pMat, SEXP col, SEXP values,
+  double NA_C, double C_MIN, double C_MAX, double NA_R)
+{
+  BMAccessorType mat( *pMat );
+  double *pCols = NUMERIC_DATA(col);
+  long numCols = GET_LENGTH(col);
+  long numRows = pMat->num_rows();
+  bool outOfRange=false;
+  VecPtr<RType> vec_ptr;
+  RType *pVals = vec_ptr(values);
+	long valLength = GET_LENGTH(values);
+  long i=0;
+  long j=0;
+  long k=0;
+	CType *pColumn;
+	long kIndex;
+  for (i=0; i < numCols; ++i)
+  {
+		pColumn = mat[static_cast<long>(pCols[i])-1];
+    for (j=0; j < numRows; ++j)
+    {	
+			kIndex = k++%valLength;
+			pColumn[j] =
+				((pVals[kIndex] < C_MIN || pVals[kIndex] > C_MAX) ?
+					static_cast<CType>(NA_C) :
+					static_cast<CType>(pVals[kIndex]));
+    }
+  }
+}
+
+template<typename CType, typename RType, typename BMAccessorType>
+void SetMatrixRows( BigMatrix *pMat, SEXP row, SEXP values,
+  double NA_C, double C_MIN, double C_MAX, double NA_R)
+{
+  BMAccessorType mat( *pMat );
+  long numCols = pMat->num_columns();
+  double *pRows = NUMERIC_DATA(row);
+  long numRows = GET_LENGTH(row);
+  bool outOfRange=false;
+  VecPtr<RType> vec_ptr;
+  RType *pVals = vec_ptr(values);
+	long valLength = GET_LENGTH(values);
+  long i=0;
+  long j=0;
+  long k=0;
+	CType *pColumn;
+	long kIndex;
+  for (i=0; i < numCols; ++i)
+  {
+		pColumn = mat[i];
+    for (j=0; j < numRows; ++j)
+    {
+			kIndex = k++%valLength;
+			pColumn[static_cast<long>(pRows[j])-1] =
+				((pVals[kIndex] < C_MIN || pVals[kIndex] > C_MAX) ?
+					static_cast<CType>(NA_C) :
+					static_cast<CType>(pVals[kIndex]));
     }
   }
 }
@@ -99,8 +182,6 @@ void SetAllMatrixElements( BigMatrix *pMat, SEXP value,
   double NA_C, double C_MIN, double C_MAX, double NA_R)
 {
   BMAccessorType mat( *pMat );
-	long colOffset = pMat->col_offset();
-	long rowOffset = pMat->row_offset();
   double val = NUMERIC_VALUE(value);
   unsigned long i=0;
   unsigned long j=0;
@@ -115,31 +196,18 @@ void SetAllMatrixElements( BigMatrix *pMat, SEXP value,
     if (!isna(val))
     {
       outOfRange=true;
+    	warning("The value given is out of range, elements will be set to NA.");
+			val = NA_C;
     }
   }
   for (i=0; i < ncol; ++i)
   {
+		CType *pColumn = mat[i];
     for (j=0; j < nrow; ++j)
     {
-      if (isValNA)
-      {
-        mat[i+colOffset][j+rowOffset] = static_cast<CType>(NA_C);
-      }
-      else
-      {
-        mat[i+colOffset][j+rowOffset] = static_cast<CType>(val);
-      }
-    }
-    if (outOfRange)
-    {
-      warning("Some of the values were out of range, they will be set to NA.");
+			pColumn[j] = static_cast<CType>(val);
     }
   }
-}
-
-bool TooManyRIndices( long val )
-{
-  return val > (powl(2, 31)-1);
 }
 
 template <typename T, typename VecType>
@@ -330,34 +398,10 @@ SEXP GetMatrixElements( BigMatrix *pMat, double NA_C, double NA_R,
   NewVec<RType> new_vec;
   VecPtr<RType> vec_ptr; 
   BMAccessorType mat(*pMat);
-  bool newRows=false;
-  bool zeroRows=false;
-  bool newCols=false;
-  bool zeroCols=false;
-  double *pCols=NULL;
-  double *pRows=NULL;
+	double *pCols = NUMERIC_DATA(col);
+	double *pRows = NUMERIC_DATA(row);
   long numCols = GET_LENGTH(col);
   long numRows = GET_LENGTH(row);
-  MakeIndicesNumeric(col, pCols, numCols, pMat, newCols, zeroCols, true);
-  if (zeroCols)
-  {
-		warning("zero indices found\n");
-    return new_vec(0);
-  }
-  if (pCols == NULL)
-  {
-    return R_NilValue; 
-  }
-  MakeIndicesNumeric(row, pRows, numRows, pMat, newRows, zeroRows, false);
-	int ii;
-  if (zeroRows)
-  {
-    return new_vec(0);
-  }
-  if (pRows == NULL)
-  {
-    return R_NilValue; 
-  }
   // Can we return big.matrix objects instead?
   if (TooManyRIndices(numCols*numRows))
   {
@@ -372,60 +416,39 @@ SEXP GetMatrixElements( BigMatrix *pMat, double NA_C, double NA_R,
   SET_VECTOR_ELT(ret, 0, retMat);
   //SEXP ret = PROTECT( new_vec(numCols*numRows) );
   RType *pRet = vec_ptr(retMat);
-  CType *pColumn = NULL;
+  CType *pColumn;
   long k=0;
   long i,j;
-	long colOffset = pMat->col_offset();
-	long rowOffset = pMat->row_offset();
   bool outOfBounds=false;
   for (i=0; i < numCols; ++i) 
   {
     if (isna(pCols[i]))
     {
-      continue;
+			for (j=0; j < numRows; ++j)
+			{
+				pRet[k] = static_cast<RType>(NA_R);
+			}
     }
-    else if (pCols[i] > pMat->ncol() || pCols[i] < 1)
-    {
-      outOfBounds=true;
-      break;
-    }
-    pColumn = mat[static_cast<long>(pCols[i])-1+colOffset];
-    for (j=0; j < numRows; ++j) 
-    {
-      if (isna(pRows[j]))
-      {
-        pRet[k] = static_cast<RType>(NA_R);
-      }
-      else if (pRows[j] > pMat->nrow() || pRows[j] < 1)
-      {
-        outOfBounds=true;
-      }
-      else
-      {
-        pRet[k] = 
-          (pColumn[static_cast<long>(pRows[j])-1+rowOffset] == 
-						static_cast<CType>(NA_C)) ?  static_cast<RType>(NA_R) : 
-           		(static_cast<RType>(
-								pColumn[static_cast<long>(pRows[j])-1+rowOffset]));
-      }
-      ++k;
-    }
-  }
-  if (outOfBounds)
-  {
-    // Note: this exact same thing is done below... maybe create a
-    // cleanup function?
-    if (newCols)
-    {
-      delete [] pCols;
-    }
-    if (newRows)
-    {
-      delete [] pRows;
-    }
-    UNPROTECT(protectCount);
-    error("Indexes out of range.");
-    return R_NilValue;
+		else
+		{
+    	pColumn = mat[static_cast<long>(pCols[i])-1];
+    	for (j=0; j < numRows; ++j) 
+    	{
+      	if (isna(pRows[j]))
+      	{
+        	pRet[k] = static_cast<RType>(NA_R);
+      	}
+      	else
+      	{
+        	pRet[k] = 
+          	(pColumn[static_cast<long>(pRows[j])-1] == 
+							static_cast<CType>(NA_C)) ?  static_cast<RType>(NA_R) : 
+           			(static_cast<RType>(
+									pColumn[static_cast<long>(pRows[j])-1]));
+      	}
+      	++k;
+    	}
+		}
   }
   Names colNames = pMat->column_names();
   if (!colNames.empty())
@@ -455,52 +478,233 @@ SEXP GetMatrixElements( BigMatrix *pMat, double NA_C, double NA_R,
     }
     SET_VECTOR_ELT(ret, 1, rRNames);
   }
-  if (newCols)
+  UNPROTECT(protectCount);
+  return ret;
+}
+
+template<typename CType, typename RType, typename BMAccessorType>
+SEXP GetMatrixRows( BigMatrix *pMat, double NA_C, double NA_R, 
+  SEXP row, SEXPTYPE sxpType)
+{
+  NewVec<RType> new_vec;
+  VecPtr<RType> vec_ptr; 
+  BMAccessorType mat(*pMat);
+  double *pRows=NUMERIC_DATA(row);
+  long numRows = GET_LENGTH(row);
+	long numCols = pMat->num_columns();
+  // Can we return big.matrix objects instead?
+  if (TooManyRIndices(numCols*numRows))
   {
-    delete [] pCols;
+    return R_NilValue;
   }
-  if (newRows)
+  SEXP ret = PROTECT(NEW_LIST(3));
+  int protectCount = 1;
+  SET_VECTOR_ELT( ret, 1, NULL_USER_OBJECT );
+  SET_VECTOR_ELT( ret, 2, NULL_USER_OBJECT );
+  SEXP retMat = PROTECT( Rf_allocMatrix(sxpType, numRows, numCols) );
+  ++protectCount;
+  SET_VECTOR_ELT(ret, 0, retMat);
+  //SEXP ret = PROTECT( new_vec(numCols*numRows) );
+  RType *pRet = vec_ptr(retMat);
+  CType *pColumn = NULL;
+  long k=0;
+  long i,j;
+  bool outOfBounds=false;
+  for (i=0; i < numCols; ++i) 
   {
-    delete [] pRows;
+   	pColumn = mat[i];
+   	for (j=0; j < numRows; ++j) 
+   	{
+     	if (isna(pRows[j]))
+     	{
+       	pRet[k] = static_cast<RType>(NA_R);
+     	}
+     	else
+     	{
+       	pRet[k] = 
+         	(pColumn[static_cast<long>(pRows[j])-1] == 
+						static_cast<CType>(NA_C)) ?  static_cast<RType>(NA_R) : 
+         			(static_cast<RType>(
+								pColumn[static_cast<long>(pRows[j])-1]));
+     	}
+     	++k;
+  	}
+  }
+  Names colNames = pMat->column_names();
+  if (!colNames.empty())
+  {
+    ++protectCount;
+    SEXP rCNames = PROTECT(allocVector(STRSXP, numCols));
+    for (i=0; i < numCols; ++i)
+    {
+    	SET_STRING_ELT( rCNames, i, mkChar(colNames[i].c_str()) );
+    }
+    SET_VECTOR_ELT(ret, 2, rCNames);
+  }
+  Names rowNames = pMat->row_names();
+  if (!rowNames.empty())
+  {
+    ++protectCount;
+    SEXP rRNames = PROTECT(allocVector(STRSXP, numRows));
+    for (i=0; i < numRows; ++i)
+    {
+      if (!isna(pRows[i]))
+			{
+        SET_STRING_ELT( rRNames, i, 
+          mkChar(rowNames[static_cast<long>(pRows[i])-1].c_str()) );	
+			}
+    }
+    SET_VECTOR_ELT(ret, 1, rRNames);
   }
   UNPROTECT(protectCount);
   return ret;
 }
 
-/*
-template<typename Type, typename BMAccessorType>
-SEXP GetMatrixElementsSpecialized(BigMatrix *pMat, Type NA, SEXP col, SEXP row)
+template<typename CType, typename RType, typename BMAccessorType>
+SEXP GetMatrixCols( BigMatrix *pMat, double NA_C, double NA_R, 
+  SEXP col, SEXPTYPE sxpType)
 {
-  NewVec<Type> new_vec;
-  VecPtr<Type> vec_ptr; 
-  // See if the Accessor is slowing down Get
+  NewVec<RType> new_vec;
+  VecPtr<RType> vec_ptr; 
   BMAccessorType mat(*pMat);
-  double *pCols = NUMERIC_DATA(col);
-  double *pRows = NUMERIC_DATA(row);
+  double *pCols=NUMERIC_DATA(col);
   long numCols = GET_LENGTH(col);
-  long numRows = GET_LENGTH(row);
-  SEXP ret = PROTECT( new_vec(numCols*numRows) );
-  Type *pRet = vec_ptr(ret);
-  long i,j;
+  long numRows = pMat->num_rows();
+  // Can we return big.matrix objects instead?
+  if (TooManyRIndices(numCols*numRows))
+  {
+    return R_NilValue;
+  }
+  SEXP ret = PROTECT(NEW_LIST(3));
+  int protectCount = 1;
+  SET_VECTOR_ELT( ret, 1, NULL_USER_OBJECT );
+  SET_VECTOR_ELT( ret, 2, NULL_USER_OBJECT );
+  SEXP retMat = PROTECT( Rf_allocMatrix(sxpType, numRows, numCols) );
+  ++protectCount;
+  SET_VECTOR_ELT(ret, 0, retMat);
+  //SEXP ret = PROTECT( new_vec(numCols*numRows) );
+  RType *pRet = vec_ptr(retMat);
+  CType *pColumn = NULL;
   long k=0;
-  Type *pCol = NULL;
+  long i,j;
+  bool outOfBounds=false;
   for (i=0; i < numCols; ++i) 
   {
     if (isna(pCols[i]))
     {
-      continue;
+			for (j=0; j < numRows; ++j)
+			{
+				pRet[k] = static_cast<RType>(NA_R);
+			}
     }
-    pCol = mat[static_cast<long>(pCols[i]-1)];
-    for (j=0; j < numRows; ++j) 
+		else
+		{
+    	pColumn = mat[static_cast<long>(pCols[i])-1];
+    	for (j=0; j < numRows; ++j) 
+    	{
+        pRet[k] = 
+         	(pColumn[j] == 
+						static_cast<CType>(NA_C)) ?  static_cast<RType>(NA_R) : 
+         			(static_cast<RType>(
+								pColumn[j]));
+      	++k;
+    	}
+		}
+  }
+  Names colNames = pMat->column_names();
+  if (!colNames.empty())
+  {
+    ++protectCount;
+    SEXP rCNames = PROTECT(allocVector(STRSXP, numCols));
+    for (i=0; i < numCols; ++i)
     {
-      pRet[k] = isna(pRows[j]) ? NA : pCol[static_cast<long>(pRows[j])-1];
-      ++k;
+      if (!isna(pCols[i]))
+        SET_STRING_ELT( rCNames, i, 
+          mkChar(colNames[static_cast<long>(pCols[i])-1].c_str()) );
+    }
+    SET_VECTOR_ELT(ret, 2, rCNames);
+  }
+  Names rowNames = pMat->row_names();
+  if (!rowNames.empty())
+  {
+    ++protectCount;
+    SEXP rRNames = PROTECT(allocVector(STRSXP, numRows));
+    for (i=0; i < numRows; ++i)
+    {
+    	SET_STRING_ELT( rRNames, i, mkChar(rowNames[i].c_str()) );	
+    }
+    SET_VECTOR_ELT(ret, 1, rRNames);
+  }
+  UNPROTECT(protectCount);
+  return ret;
+}
+
+template<typename CType, typename RType, typename BMAccessorType>
+SEXP GetMatrixAll( BigMatrix *pMat, double NA_C, double NA_R, 
+  SEXPTYPE sxpType)
+{
+  NewVec<RType> new_vec;
+  VecPtr<RType> vec_ptr; 
+  BMAccessorType mat(*pMat);
+  long numCols = pMat->num_columns();
+  long numRows = pMat->num_rows();
+  // Can we return big.matrix objects instead?
+  if (TooManyRIndices(numCols*numRows))
+  {
+    return R_NilValue;
+  }
+  SEXP ret = PROTECT(NEW_LIST(3));
+  int protectCount = 1;
+  SET_VECTOR_ELT( ret, 1, NULL_USER_OBJECT );
+  SET_VECTOR_ELT( ret, 2, NULL_USER_OBJECT );
+  SEXP retMat = PROTECT( Rf_allocMatrix(sxpType, numRows, numCols) );
+  ++protectCount;
+  SET_VECTOR_ELT(ret, 0, retMat);
+  //SEXP ret = PROTECT( new_vec(numCols*numRows) );
+  RType *pRet = vec_ptr(retMat);
+  CType *pColumn = NULL;
+  long k=0;
+  long i,j;
+  bool outOfBounds=false;
+  for (i=0; i < numCols; ++i) 
+  {
+   	pColumn = mat[i];
+   	for (j=0; j < numRows; ++j) 
+   	{
+     	pRet[k] = 
+     		(pColumn[j] == 
+					static_cast<CType>(NA_C)) ?  static_cast<RType>(NA_R) : 
+          	(static_cast<RType>(pColumn[j]));
+    	++k;
     }
   }
-  UNPROTECT(1);
-  return(ret);
+  Names colNames = pMat->column_names();
+  if (!colNames.empty())
+  {
+    ++protectCount;
+    SEXP rCNames = PROTECT(allocVector(STRSXP, numCols));
+    for (i=0; i < numCols; ++i)
+    {
+    	SET_STRING_ELT( rCNames, i, 
+      	mkChar(colNames[i].c_str()) );
+    }
+    SET_VECTOR_ELT(ret, 2, rCNames);
+  }
+  Names rowNames = pMat->row_names();
+  if (!rowNames.empty())
+  {
+    ++protectCount;
+    SEXP rRNames = PROTECT(allocVector(STRSXP, numRows));
+    for (i=0; i < numRows; ++i)
+    {
+      SET_STRING_ELT( rRNames, i, 
+        mkChar(rowNames[i].c_str()) );	
+    }
+    SET_VECTOR_ELT(ret, 1, rRNames);
+  }
+  UNPROTECT(protectCount);
+  return ret;
 }
-*/
 
 template<typename T, typename BMAccessorType>
 SEXP ReadMatrix(SEXP fileName, BigMatrix *pMat,
@@ -604,17 +808,11 @@ void WriteMatrix( BigMatrix *pMat, SEXP fileName, SEXP rowNames,
   Names rn = pMat->row_names();
   if (LOGICAL_VALUE(colNames) == Rboolean(TRUE) && !cn.empty())
   {
-//    if ( LOGICAL_VALUE(rowNames) == Rboolean(TRUE) && !rn.empty())
-//    {
-//      s += string("\"")+"\""+sepString;
-//    }
     for (i=0; i < (int) cn.size(); ++i)
       s += "\"" + cn[i] + "\"" + (((int)cn.size()-1 == i) ? "\n" : sepString);
   }
   fprintf(FP, s.c_str());
   s.clear();
-	long colOffset = pMat->col_offset();
-	long rowOffset = pMat->row_offset();
   for (i=0; i < pMat->nrow(); ++i) 
   {
     if ( LOGICAL_VALUE(rowNames) == Rboolean(TRUE) && !rn.empty())
@@ -623,13 +821,13 @@ void WriteMatrix( BigMatrix *pMat, SEXP fileName, SEXP rowNames,
     }
     for (j=0; j < pMat->ncol(); ++j) 
     {
-      if ( isna(mat[j+colOffset][i+rowOffset]) )
+      if ( isna(mat[j][i]) )
       {
         s += "NA";
       }
       else
       {
-        s += ttos(mat[j+colOffset][i+rowOffset]);
+        s += ttos(mat[j][i]);
       }
       if (j < pMat->ncol()-1)
       { 
@@ -650,14 +848,14 @@ template<typename T, typename BMAccessorType>
 SEXP MatrixHashRanges( BigMatrix *pMat, SEXP selectColumn )
 {
   BMAccessorType mat(*pMat);
-  long sc = (long)NUMERIC_VALUE(selectColumn)-1+pMat->col_offset();
+  long sc = (long)NUMERIC_VALUE(selectColumn)-1;
   if (pMat->nrow()==0) return(R_NilValue);
   int uniqueValCount=1;
-  T lastVal = mat[sc][0+pMat->row_offset()];
+  T lastVal = mat[sc][0];
   long i;
   T val;
   for (i=1; i < pMat->nrow(); ++i) {
-    val = mat[sc][i+pMat->row_offset()];
+    val = mat[sc][i];
     if (val != lastVal) {
       lastVal = val;
       uniqueValCount += 1;
@@ -666,10 +864,10 @@ SEXP MatrixHashRanges( BigMatrix *pMat, SEXP selectColumn )
   SEXP ret = PROTECT(NEW_INTEGER(uniqueValCount*2));
   int *pRet = INTEGER_DATA(ret);
   int j=0;
-  lastVal = mat[sc][0+pMat->row_offset()];
+  lastVal = mat[sc][0];
   pRet[j++]=1;
   for (i=1; i < pMat->nrow(); ++i) {
-    val = mat[sc][i+pMat->row_offset()];
+    val = mat[sc][i];
     if (val != lastVal) {
       pRet[j++] = i;
       pRet[j++] = i+1;
@@ -685,15 +883,13 @@ template<typename T, typename BMAccessorType>
 SEXP ColCountNA( BigMatrix *pMat, SEXP column )
 {
   BMAccessorType mat(*pMat);
-	long colOffset = pMat->col_offset();
-	long rowOffset = pMat->row_offset();
   long col = (long)NUMERIC_VALUE(column);
   long i, counter;
   counter=0;
   for (i=0; i < pMat->nrow(); ++i)
   {
-    if (mat[col-1+colOffset][i+rowOffset] == NA_INTEGER || 
-      isna((double)mat[col-1+colOffset][i+rowOffset]))
+    if (mat[col-1][i] == NA_INTEGER || 
+      isna((double)mat[col-1][i]))
     {
       ++counter;
     }
@@ -841,6 +1037,141 @@ int Ckmeans2(BigMatrix *pMat, SEXP centAddr, SEXP ssAddr,
 extern "C"
 {
 
+SEXP CCleanIndices(SEXP indices, SEXP rc)
+{
+	double *pIndices = NUMERIC_DATA(indices);
+	long numIndices = GET_LENGTH(indices);
+	double maxrc = NUMERIC_VALUE(rc);
+	int protectCount=1;
+	SEXP ret = PROTECT(NEW_LIST(2));
+	long negIndexCount=0;
+	long posIndexCount=0;
+	long zeroIndexCount=0;
+	long i,j;
+	// See if the indices are within range, negative, positive, zero, or mixed.
+	for (i=0; i < numIndices; ++i)
+	{
+		if (static_cast<long>(pIndices[i]) == 0)
+		{
+			++zeroIndexCount;
+		}
+		if (static_cast<long>(pIndices[i]) < 0)
+		{
+			++negIndexCount;
+		}
+		if (static_cast<long>(pIndices[i]) > 0)
+		{
+			++posIndexCount;
+		}
+		if ( labs(static_cast<long>(pIndices[i])) > maxrc )
+		{
+			SET_VECTOR_ELT(ret, 0, NULL_USER_OBJECT);
+			SET_VECTOR_ELT(ret, 1, NULL_USER_OBJECT);
+			UNPROTECT(protectCount);
+			return ret;
+		}
+	}
+	
+	if ( (zeroIndexCount == numIndices) && (numIndices > 0) )
+	{
+		protectCount += 2;
+		SEXP returnCond = PROTECT(NEW_LOGICAL(1));
+		LOGICAL_DATA(returnCond)[0] = (Rboolean)1;
+		SEXP newIndices = PROTECT(NEW_NUMERIC(0));
+		SET_VECTOR_ELT(ret, 0, returnCond);
+		SET_VECTOR_ELT(ret, 1, newIndices);
+		UNPROTECT(protectCount);
+		return ret;
+	}
+
+	if (posIndexCount > 0 && negIndexCount > 0)
+	{
+		SET_VECTOR_ELT(ret, 0, NULL_USER_OBJECT);
+		SET_VECTOR_ELT(ret, 1, NULL_USER_OBJECT);
+		UNPROTECT(protectCount);
+		return ret;
+	}
+	if (zeroIndexCount > 0)
+	{	
+		protectCount += 2;
+		SEXP returnCond = PROTECT(NEW_LOGICAL(1));
+		LOGICAL_DATA(returnCond)[0] = (Rboolean)1;
+		SEXP newIndices = PROTECT(NEW_NUMERIC(posIndexCount));
+		double *newPIndices = NUMERIC_DATA(newIndices);
+		j=0;
+		for (i=0; i < numIndices; ++i)
+		{
+			if (static_cast<long>(pIndices[i]) != 0)
+			{
+				newPIndices[j++] = pIndices[i]; 
+			}
+		}
+		SET_VECTOR_ELT(ret, 0, returnCond);
+		SET_VECTOR_ELT(ret, 1, newIndices);
+		UNPROTECT(protectCount);
+		return ret;
+	}
+	else if (negIndexCount > 0)
+	{
+		// It might be better to use a data-structure other than a vector
+		// (sequential ordering).
+		typedef std::vector<long> Indices;
+		Indices ind;
+		try
+		{
+			ind.reserve(static_cast<long>(maxrc));
+		}
+		catch(...)
+		{
+			SET_VECTOR_ELT(ret, 0, NULL_USER_OBJECT);
+			SET_VECTOR_ELT(ret, 1, NULL_USER_OBJECT);
+			UNPROTECT(protectCount);
+			return ret;
+		}
+		for (i=1; i <= static_cast<long>(maxrc); ++i)
+		{
+			ind.push_back(i);
+		}
+		Indices::iterator it;
+		for (i=0; i < numIndices; ++i)
+		{
+			it = std::lower_bound(ind.begin(), ind.end(), 
+				static_cast<long>(-1*pIndices[i]));
+			if ( it != ind.end() && *it == -1*static_cast<long>(pIndices[i]) )
+			{
+				ind.erase(it);
+			}
+		}
+		if (TooManyRIndices(ind.size()))
+		{
+			SET_VECTOR_ELT(ret, 0, NULL_USER_OBJECT);
+			SET_VECTOR_ELT(ret, 1, NULL_USER_OBJECT);
+			UNPROTECT(protectCount);
+			return ret;
+		}
+		protectCount +=2;
+		SEXP returnCond = PROTECT(NEW_LOGICAL(1));
+		LOGICAL_DATA(returnCond)[0] = (Rboolean)1;
+		SEXP newIndices = PROTECT(NEW_NUMERIC(ind.size()));
+		double *newPIndices = NUMERIC_DATA(newIndices);
+		for (i=0; i < ind.size(); ++i)
+		{
+			newPIndices[i] = static_cast<double>(ind[i]);
+		}
+		SET_VECTOR_ELT(ret, 0, returnCond);
+		SET_VECTOR_ELT(ret, 1, newIndices);
+		UNPROTECT(protectCount);
+		return ret;
+	}
+	protectCount += 1;
+	SEXP returnCond = PROTECT(NEW_LOGICAL(1));
+	LOGICAL_DATA(returnCond)[0] = (Rboolean)0;
+	SET_VECTOR_ELT(ret, 0, returnCond);
+	SET_VECTOR_ELT(ret, 1, NULL_USER_OBJECT);
+	UNPROTECT(protectCount);
+	return ret;
+}
+
 
 SEXP HasRowColNames(SEXP address)
 {
@@ -924,20 +1255,6 @@ SEXP GetNumExtraBytes( SEXP bigMatAddr )
 	NUMERIC_DATA(ret)[0] = static_cast<double>(pMat->nebytes());
 	UNPROTECT(1);
 	return ret;
-}
-
-SEXP CIsSubMatrix(SEXP bigMatAddr)
-{
-  BigMatrix *pMat = reinterpret_cast<BigMatrix*>(R_ExternalPtrAddr(bigMatAddr));
-  SEXP ret = PROTECT(NEW_LOGICAL(1));
-  if ( pMat->col_offset()>0 || pMat->row_offset()>0 ||
-       pMat->num_rows()<pMat->nrow() || pMat->num_columns()<pMat->ncol() ) {
-    LOGICAL_DATA(ret)[0] = (Rboolean) 1;
-  } else {
-    LOGICAL_DATA(ret)[0] = (Rboolean) 0;
-  }
-  UNPROTECT(1);
-  return ret;
 }
 
 SEXP CGetNrow(SEXP bigMatAddr)
@@ -1052,7 +1369,7 @@ SEXP CCreateMatrix(SEXP row, SEXP col, SEXP ini, SEXP type, SEXP separated,
             pMat, ini, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, NA_REAL);
           break;
         case 4:
-          SetAllMatrixElements<char, SepBigMatrixAccessor<int> >(
+          SetAllMatrixElements<int, SepBigMatrixAccessor<int> >(
             pMat, ini, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_REAL);
           break;
         case 8:
@@ -1073,7 +1390,7 @@ SEXP CCreateMatrix(SEXP row, SEXP col, SEXP ini, SEXP type, SEXP separated,
             pMat, ini, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, NA_REAL);
           break;
         case 4:
-          SetAllMatrixElements<char, BigMatrixAccessor<int> >(
+          SetAllMatrixElements<int, BigMatrixAccessor<int> >(
             pMat, ini, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_REAL);
           break;
         case 8:
@@ -1117,8 +1434,7 @@ inline bool Gcomp(double a, double b, int op) {
 
 template<typename T, typename MatrixType>
 SEXP MWhichMatrix( MatrixType mat, long nrow, SEXP selectColumn, SEXP minVal,
-  SEXP maxVal, SEXP chkMin, SEXP chkMax, SEXP opVal, double C_NA,
-	long colOffset=0, long rowOffset=0 )
+  SEXP maxVal, SEXP chkMin, SEXP chkMax, SEXP opVal, double C_NA)
 {
   long numSc = GET_LENGTH(selectColumn);
   double *sc = NUMERIC_DATA(selectColumn);
@@ -1140,7 +1456,7 @@ SEXP MWhichMatrix( MatrixType mat, long nrow, SEXP selectColumn, SEXP minVal,
         minV = static_cast<T>(C_NA);
         maxV = static_cast<T>(C_NA);
       }
-      val = (double) mat[(long)sc[j]-1+colOffset][i+rowOffset];
+      val = (double) mat[(long)sc[j]-1][i];
       if (chkmin[j]==-1) { // this is an 'neq'
         if (ov==1) { 
           // OR with 'neq'
@@ -1188,7 +1504,7 @@ SEXP MWhichMatrix( MatrixType mat, long nrow, SEXP selectColumn, SEXP minVal,
         minV = static_cast<T>(C_NA);
         maxV = static_cast<T>(C_NA);
       }
-      val = (double) mat[(long)sc[j]-1+colOffset][i+rowOffset];
+      val = (double) mat[(long)sc[j]-1][i];
 
       if (chkmin[j]==-1) { // this is an 'neq'
         if (ov==1) {
@@ -1223,23 +1539,6 @@ SEXP MWhichMatrix( MatrixType mat, long nrow, SEXP selectColumn, SEXP minVal,
 }
 
 extern "C"{
-
-void SetRowOffsetInfo( SEXP bigMatAddr, SEXP rowOffset, SEXP numRows )
-{
-  BigMatrix *pMat = 
-    reinterpret_cast<BigMatrix*>(R_ExternalPtrAddr(bigMatAddr));
-  pMat->row_offset(static_cast<long>(NUMERIC_VALUE(rowOffset)));
-  pMat->nrow(static_cast<long>(NUMERIC_VALUE(numRows)));
-  
-}
-
-void SetColumnOffsetInfo( SEXP bigMatAddr, SEXP colOffset, SEXP numCols )
-{
-  BigMatrix *pMat = 
-    reinterpret_cast<BigMatrix*>(R_ExternalPtrAddr(bigMatAddr));
-  pMat->col_offset(static_cast<long>(NUMERIC_VALUE(colOffset)));
-  pMat->ncol(static_cast<long>(NUMERIC_VALUE(numCols)));
-}
 
 SEXP GetTypeString( SEXP bigMatAddr )
 {
@@ -1276,19 +1575,19 @@ SEXP MWhichBigMatrix( SEXP bigMatAddr, SEXP selectColumn, SEXP minVal,
       case 1:
         return MWhichMatrix<char>( SepBigMatrixAccessor<char>(*pMat),
           pMat->nrow(), selectColumn, minVal, maxVal, chkMin, chkMax, 
-          opVal, NA_CHAR, pMat->col_offset(), pMat->row_offset());
+          opVal, NA_CHAR);
       case 2:
         return MWhichMatrix<short>( SepBigMatrixAccessor<short>(*pMat),
           pMat->nrow(), selectColumn, minVal, maxVal, chkMin, chkMax, 
-          opVal, NA_SHORT, pMat->col_offset(), pMat->row_offset());
+          opVal, NA_SHORT);
       case 4:
         return MWhichMatrix<int>( SepBigMatrixAccessor<int>(*pMat),
           pMat->nrow(), selectColumn, minVal, maxVal, chkMin, chkMax, 
-          opVal, NA_INTEGER, pMat->col_offset(), pMat->row_offset());
+          opVal, NA_INTEGER);
       case 8:
         return MWhichMatrix<double>( SepBigMatrixAccessor<double>(*pMat),
           pMat->nrow(), selectColumn, minVal, maxVal, chkMin, chkMax, 
-          opVal, NA_REAL, pMat->col_offset(), pMat->row_offset());
+          opVal, NA_REAL);
     }
   }
   else
@@ -1298,19 +1597,19 @@ SEXP MWhichBigMatrix( SEXP bigMatAddr, SEXP selectColumn, SEXP minVal,
       case 1:
         return MWhichMatrix<char>( BigMatrixAccessor<char>(*pMat),
           pMat->nrow(), selectColumn, minVal, maxVal, chkMin, chkMax, 
-          opVal, NA_CHAR, pMat->col_offset(), pMat->row_offset());
+          opVal, NA_CHAR);
       case 2:
         return MWhichMatrix<short>( BigMatrixAccessor<short>(*pMat),
           pMat->nrow(), selectColumn, minVal, maxVal, chkMin, chkMax, 
-          opVal, NA_SHORT, pMat->col_offset(), pMat->row_offset());
+          opVal, NA_SHORT);
       case 4:
         return MWhichMatrix<int>( BigMatrixAccessor<int>(*pMat),
           pMat->nrow(), selectColumn, minVal, maxVal, chkMin, chkMax, 
-          opVal, NA_INTEGER, pMat->col_offset(), pMat->row_offset());
+          opVal, NA_INTEGER);
       case 8:
         return MWhichMatrix<double>( BigMatrixAccessor<double>(*pMat),
           pMat->nrow(), selectColumn, minVal, maxVal, chkMin, chkMax, 
-          opVal, NA_REAL, pMat->col_offset(), pMat->row_offset());
+          opVal, NA_REAL);
     }
   }
   return R_NilValue;
@@ -1321,7 +1620,7 @@ SEXP MWhichRIntMatrix( SEXP matrixVector, SEXP nrow, SEXP selectColumn,
 {
   long numRows = static_cast<long>(INTEGER_VALUE(nrow));
   BigMatrixAccessor<int> mat(INTEGER_DATA(matrixVector), numRows);
-  return MWhichMatrix<int, BigMatrixAccessor<int> >(mat, numRows, 
+  return MWhichMatrix<int>(mat, numRows, 
     selectColumn, minVal, maxVal, chkMin, chkMax, opVal, NA_INTEGER);
 }
 
@@ -1330,7 +1629,7 @@ SEXP MWhichRNumericMatrix( SEXP matrixVector, SEXP nrow, SEXP selectColumn,
 {
   long numRows = static_cast<long>(INTEGER_VALUE(nrow));
   BigMatrixAccessor<double> mat(NUMERIC_DATA(matrixVector), numRows);
-  return MWhichMatrix<double, BigMatrixAccessor<double> >(mat, numRows,
+  return MWhichMatrix<double>(mat, numRows,
     selectColumn, minVal, maxVal, chkMin, chkMax, opVal, NA_REAL);
 }
 
@@ -1581,6 +1880,135 @@ SEXP GetMatrixElements(SEXP bigMatAddr, SEXP col, SEXP row)
   return R_NilValue;
 }
 
+SEXP GetMatrixRows(SEXP bigMatAddr, SEXP row)
+{
+  BigMatrix *pMat = 
+    reinterpret_cast<BigMatrix*>(R_ExternalPtrAddr(bigMatAddr));
+  if (pMat->separated_columns())
+  {
+    switch(pMat->matrix_type())
+    {
+      case 1:
+        return GetMatrixRows<char, int, SepBigMatrixAccessor<char> >
+          (pMat, NA_CHAR, NA_INTEGER, row, INTSXP);
+      case 2:
+        return GetMatrixRows<short,int, SepBigMatrixAccessor<short> >
+          (pMat, NA_SHORT, NA_INTEGER, row, INTSXP);
+      case 4:
+        return GetMatrixRows<int, int, SepBigMatrixAccessor<int> >
+          (pMat, NA_INTEGER, NA_INTEGER, row, INTSXP);
+      case 8:
+        return GetMatrixRows<double, double, SepBigMatrixAccessor<double> >(
+          pMat, NA_REAL, NA_REAL, row, REALSXP);
+    }
+  }
+  else
+  {
+    switch(pMat->matrix_type())
+    {
+      case 1:
+        return GetMatrixRows<char, int, BigMatrixAccessor<char> >(
+          pMat, NA_CHAR, NA_INTEGER, row, INTSXP);
+      case 2:
+        return GetMatrixRows<short, int, BigMatrixAccessor<short> >(
+          pMat, NA_SHORT, NA_INTEGER, row, INTSXP);
+      case 4:
+        return GetMatrixRows<int, int, BigMatrixAccessor<int> >(
+          pMat, NA_INTEGER, NA_INTEGER, row, INTSXP);
+      case 8:
+        return GetMatrixRows<double, double, BigMatrixAccessor<double> >
+          (pMat, NA_REAL, NA_REAL, row, REALSXP);
+    }
+  }
+  return R_NilValue;
+}
+
+SEXP GetMatrixCols(SEXP bigMatAddr, SEXP col)
+{
+  BigMatrix *pMat = 
+    reinterpret_cast<BigMatrix*>(R_ExternalPtrAddr(bigMatAddr));
+  if (pMat->separated_columns())
+  {
+    switch(pMat->matrix_type())
+    {
+      case 1:
+        return GetMatrixCols<char, int, SepBigMatrixAccessor<char> >
+          (pMat, NA_CHAR, NA_INTEGER, col, INTSXP);
+      case 2:
+        return GetMatrixCols<short,int, SepBigMatrixAccessor<short> >
+          (pMat, NA_SHORT, NA_INTEGER, col, INTSXP);
+      case 4:
+        return GetMatrixCols<int, int, SepBigMatrixAccessor<int> >
+          (pMat, NA_INTEGER, NA_INTEGER, col, INTSXP);
+      case 8:
+        return GetMatrixCols<double, double, SepBigMatrixAccessor<double> >(
+          pMat, NA_REAL, NA_REAL, col, REALSXP);
+    }
+  }
+  else
+  {
+    switch(pMat->matrix_type())
+    {
+      case 1:
+        return GetMatrixCols<char, int, BigMatrixAccessor<char> >(
+          pMat, NA_CHAR, NA_INTEGER, col, INTSXP);
+      case 2:
+        return GetMatrixCols<short, int, BigMatrixAccessor<short> >(
+          pMat, NA_SHORT, NA_INTEGER, col, INTSXP);
+      case 4:
+        return GetMatrixCols<int, int, BigMatrixAccessor<int> >(
+          pMat, NA_INTEGER, NA_INTEGER, col, INTSXP);
+      case 8:
+        return GetMatrixCols<double, double, BigMatrixAccessor<double> >
+          (pMat, NA_REAL, NA_REAL, col, REALSXP);
+    }
+  }
+  return R_NilValue;
+}
+
+SEXP GetMatrixAll(SEXP bigMatAddr, SEXP col)
+{
+  BigMatrix *pMat = 
+    reinterpret_cast<BigMatrix*>(R_ExternalPtrAddr(bigMatAddr));
+  if (pMat->separated_columns())
+  {
+    switch(pMat->matrix_type())
+    {
+      case 1:
+        return GetMatrixAll<char, int, SepBigMatrixAccessor<char> >
+          (pMat, NA_CHAR, NA_INTEGER, INTSXP);
+      case 2:
+        return GetMatrixAll<short,int, SepBigMatrixAccessor<short> >
+          (pMat, NA_SHORT, NA_INTEGER, INTSXP);
+      case 4:
+        return GetMatrixAll<int, int, SepBigMatrixAccessor<int> >
+          (pMat, NA_INTEGER, NA_INTEGER, INTSXP);
+      case 8:
+        return GetMatrixAll<double, double, SepBigMatrixAccessor<double> >(
+          pMat, NA_REAL, NA_REAL, REALSXP);
+    }
+  }
+  else
+  {
+    switch(pMat->matrix_type())
+    {
+      case 1:
+        return GetMatrixAll<char, int, BigMatrixAccessor<char> >(
+          pMat, NA_CHAR, NA_INTEGER, INTSXP);
+      case 2:
+        return GetMatrixAll<short, int, BigMatrixAccessor<short> >(
+          pMat, NA_SHORT, NA_INTEGER, INTSXP);
+      case 4:
+        return GetMatrixAll<int, int, BigMatrixAccessor<int> >(
+          pMat, NA_INTEGER, NA_INTEGER, INTSXP);
+      case 8:
+        return GetMatrixAll<double, double, BigMatrixAccessor<double> >
+          (pMat, NA_REAL, NA_REAL, REALSXP);
+    }
+  }
+  return R_NilValue;
+}
+
 void SetMatrixElements(SEXP bigMatAddr, SEXP col, SEXP row, SEXP values)
 {
   BigMatrix *pMat = reinterpret_cast<BigMatrix*>(R_ExternalPtrAddr(bigMatAddr));
@@ -1626,6 +2054,153 @@ void SetMatrixElements(SEXP bigMatAddr, SEXP col, SEXP row, SEXP values)
       case 8:
         SetMatrixElements<double, double, BigMatrixAccessor<double> >( 
           pMat, col, row, values, NA_REAL, R_DOUBLE_MIN, R_DOUBLE_MAX, NA_REAL);
+    }
+  }
+}
+
+void SetMatrixAll(SEXP bigMatAddr, SEXP values)
+{
+  BigMatrix *pMat = reinterpret_cast<BigMatrix*>(R_ExternalPtrAddr(bigMatAddr));
+  if (pMat->separated_columns())
+  {
+    switch (pMat->matrix_type())
+    {
+      case 1:
+        SetMatrixAll<char, int, SepBigMatrixAccessor<char> >( 
+          pMat, values, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_INTEGER);
+        break;
+      case 2:
+        SetMatrixAll<short, int, SepBigMatrixAccessor<short> >( 
+          pMat, values, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, 
+          NA_INTEGER);
+        break;
+      case 4:
+        SetMatrixAll<int, int, SepBigMatrixAccessor<int> >( 
+          pMat, values, NA_INTEGER, R_INT_MIN, R_INT_MAX, NA_INTEGER);
+        break;
+      case 8:
+        SetMatrixAll<double, double, SepBigMatrixAccessor<double> >( 
+          pMat, values, NA_REAL, R_DOUBLE_MIN, R_DOUBLE_MAX, NA_REAL);
+    }
+  }
+  else
+  {
+    switch (pMat->matrix_type())
+    {
+      case 1:
+        SetMatrixAll<char, int, BigMatrixAccessor<char> >( 
+          pMat, values, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_INTEGER);
+        break;
+      case 2:
+        SetMatrixAll<short, int, BigMatrixAccessor<short> >( 
+          pMat, values, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, 
+          NA_INTEGER);
+        break;
+      case 4:
+        SetMatrixAll<int, int, BigMatrixAccessor<int> >( 
+          pMat, values, NA_INTEGER, R_INT_MIN, R_INT_MAX, NA_INTEGER);
+        break;
+      case 8:
+        SetMatrixAll<double, double, BigMatrixAccessor<double> >( 
+          pMat, values, NA_REAL, R_DOUBLE_MIN, R_DOUBLE_MAX, NA_REAL);
+    }
+  }
+}
+
+void SetMatrixCols(SEXP bigMatAddr, SEXP col, SEXP values)
+{
+  BigMatrix *pMat = reinterpret_cast<BigMatrix*>(R_ExternalPtrAddr(bigMatAddr));
+  if (pMat->separated_columns())
+  {
+    switch (pMat->matrix_type())
+    {
+      case 1:
+        SetMatrixCols<char, int, SepBigMatrixAccessor<char> >( 
+          pMat, col, values, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_INTEGER);
+        break;
+      case 2:
+        SetMatrixCols<short, int, SepBigMatrixAccessor<short> >( 
+          pMat, col, values, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, 
+          NA_INTEGER);
+        break;
+      case 4:
+        SetMatrixCols<int, int, SepBigMatrixAccessor<int> >( 
+          pMat, col, values, NA_INTEGER, R_INT_MIN, R_INT_MAX, NA_INTEGER);
+        break;
+      case 8:
+        SetMatrixCols<double, double, SepBigMatrixAccessor<double> >( 
+          pMat, col, values, NA_REAL, R_DOUBLE_MIN, R_DOUBLE_MAX, NA_REAL);
+    }
+  }
+  else
+  {
+    switch (pMat->matrix_type())
+    {
+      case 1:
+        SetMatrixCols<char, int, BigMatrixAccessor<char> >( 
+          pMat, col, values, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_INTEGER);
+        break;
+      case 2:
+        SetMatrixCols<short, int, BigMatrixAccessor<short> >( 
+          pMat, col, values, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, 
+          NA_INTEGER);
+        break;
+      case 4:
+        SetMatrixCols<int, int, BigMatrixAccessor<int> >( 
+          pMat, col, values, NA_INTEGER, R_INT_MIN, R_INT_MAX, NA_INTEGER);
+        break;
+      case 8:
+        SetMatrixCols<double, double, BigMatrixAccessor<double> >( 
+          pMat, col, values, NA_REAL, R_DOUBLE_MIN, R_DOUBLE_MAX, NA_REAL);
+    }
+  }
+}
+
+void SetMatrixRows(SEXP bigMatAddr, SEXP row, SEXP values)
+{
+  BigMatrix *pMat = reinterpret_cast<BigMatrix*>(R_ExternalPtrAddr(bigMatAddr));
+  if (pMat->separated_columns())
+  {
+    switch (pMat->matrix_type())
+    {
+      case 1:
+        SetMatrixRows<char, int, SepBigMatrixAccessor<char> >( 
+          pMat, row, values, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_INTEGER);
+        break;
+      case 2:
+        SetMatrixRows<short, int, SepBigMatrixAccessor<short> >( 
+          pMat, row, values, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, 
+          NA_INTEGER);
+        break;
+      case 4:
+        SetMatrixRows<int, int, SepBigMatrixAccessor<int> >( 
+          pMat, row, values, NA_INTEGER, R_INT_MIN, R_INT_MAX, NA_INTEGER);
+        break;
+      case 8:
+        SetMatrixRows<double, double, SepBigMatrixAccessor<double> >( 
+          pMat, row, values, NA_REAL, R_DOUBLE_MIN, R_DOUBLE_MAX, NA_REAL);
+    }
+  }
+  else
+  {
+    switch (pMat->matrix_type())
+    {
+      case 1:
+        SetMatrixRows<char, int, BigMatrixAccessor<char> >( 
+          pMat, row, values, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_INTEGER);
+        break;
+      case 2:
+        SetMatrixRows<short, int, BigMatrixAccessor<short> >( 
+          pMat, row, values, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, 
+          NA_INTEGER);
+        break;
+      case 4:
+        SetMatrixRows<int, int, BigMatrixAccessor<int> >( 
+          pMat, row, values, NA_INTEGER, R_INT_MIN, R_INT_MAX, NA_INTEGER);
+        break;
+      case 8:
+        SetMatrixRows<double, double, BigMatrixAccessor<double> >( 
+          pMat, row, values, NA_REAL, R_DOUBLE_MIN, R_DOUBLE_MAX, NA_REAL);
     }
   }
 }
@@ -1722,7 +2297,7 @@ SEXP CCreateSharedMatrix(SEXP row, SEXP col, SEXP colnames, SEXP rownames,
             pMat, ini, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, NA_REAL);
           break;
         case 4:
-          SetAllMatrixElements<char, SepBigMatrixAccessor<int> >(
+          SetAllMatrixElements<int, SepBigMatrixAccessor<int> >(
             pMat, ini, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_REAL);
           break;
         case 8:
@@ -1743,7 +2318,7 @@ SEXP CCreateSharedMatrix(SEXP row, SEXP col, SEXP colnames, SEXP rownames,
             pMat, ini, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, NA_REAL);
           break;
         case 4:
-          SetAllMatrixElements<char, BigMatrixAccessor<int> >(
+          SetAllMatrixElements<int, BigMatrixAccessor<int> >(
             pMat, ini, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_REAL);
           break;
         case 8:
@@ -1816,8 +2391,8 @@ SEXP CCreateFileBackedBigMatrix(SEXP fileName, SEXP filePath, SEXP row,
             pMat, ini, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, NA_REAL);
           break;
         case 4:
-          SetAllMatrixElements<char, SepBigMatrixAccessor<int> >(
-            pMat, ini, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_REAL);
+          SetAllMatrixElements<int, SepBigMatrixAccessor<int> >(
+            pMat, ini, NA_INTEGER, R_INT_MIN, R_INT_MAX, NA_REAL);
           break;
         case 8:
           SetAllMatrixElements<double, SepBigMatrixAccessor<double> >(
@@ -1837,8 +2412,8 @@ SEXP CCreateFileBackedBigMatrix(SEXP fileName, SEXP filePath, SEXP row,
             pMat, ini, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, NA_REAL);
           break;
         case 4:
-          SetAllMatrixElements<char, BigMatrixAccessor<int> >(
-            pMat, ini, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_REAL);
+          SetAllMatrixElements<int, BigMatrixAccessor<int> >(
+            pMat, ini, NA_INTEGER, R_INT_MIN, R_INT_MAX, NA_REAL);
           break;
         case 8:
           SetAllMatrixElements<double, BigMatrixAccessor<double> >(

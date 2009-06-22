@@ -2,7 +2,7 @@
  *  bigmemory: an R package for managing massive matrices using C,
  *  with support for shared memory.
  *
- *  Copyright (C) 2008 John W. Emerson and Michael J. Kane
+ *  Copyright (C) 2009 John W. Emerson and Michael J. Kane
  *
  *  This file is part of bigmemory.
  *

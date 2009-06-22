@@ -16,8 +16,8 @@ class whose interface is simlar to an R \code{matrix}.
 \tabular{ll}{
 Package: \tab bigmemory\cr
 Type: \tab Package\cr
-Version: \tab 3.8\cr
-Date: \tab 2009-06-09\cr
+Version: \tab 3.9\cr
+Date: \tab 2009-06-22\cr
 License: \tab LGPL-3\cr
 }
 
@@ -45,6 +45,17 @@ be set to avoid annoying warnings that might occur if, for example you
 assign R objects (typically type double) to char, short, or integer
 \code{big.matrix} objects.
 
+This package is still actively developed.  Please send us an email
+letting us know you are trying the package, and we'll keep you
+abreast on updates.
+
+NOTE: The 3.X and earlier versions support a limited number of columns
+(due to mutex limitations), roughly 50,000 on a typical Linux system.
+This restriction will be removed in versions 4.0 and beyond.  There
+were row limitations (due to a bug that has now been fixed) in versions
+3.8 and earlier of roughly 1 billion, but this has been fixed in versions
+3.82 and later.  We apologize for the inconvenience, and appreciate
+and and all feedback.  - Jay and Mike
 }
 \author{
 John W. Emerson and Michael J. Kane

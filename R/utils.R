@@ -30,7 +30,9 @@ setMethod('binit', signature(x='big.matrix'),
   {
     if (!is.big.matrix(x)) stop("Error in binit: must be a big.matrix.")
     if (is.null(cols)) stop("Error in binit: must provide 1 or 2 columns.")
-    if (is.character(cols)) cols <- mmap(cols, colnames(x))
+    cols <- cleanupcols(cols, ncol(x), colnames(x))
+    #if (is.logical(cols)) stop("cols here may not be logical, sorry.")
+    #if (is.character(cols)) cols <- mmap(cols, colnames(x))
     if (length(cols)<1 || length(cols)>2) {
       stop("Error in binit: only 1 or 2 columns is supported.")
     }

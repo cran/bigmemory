@@ -5,6 +5,10 @@
 \alias{[<-,big.matrix,ANY,missing-method}
 \alias{[<-,big.matrix,missing,ANY-method}
 \alias{[<-,big.matrix,missing,missing-method}
+\alias{[,big.matrix,ANY,ANY,logical-method}
+\alias{[,big.matrix,ANY,missing,logical-method}
+\alias{[,big.matrix,missing,ANY,logical-method}
+\alias{[,big.matrix,missing,missing,logical-method}
 \alias{[,big.matrix,ANY,ANY,missing-method}
 \alias{[,big.matrix,ANY,missing,missing-method}
 \alias{[,big.matrix,missing,ANY,missing-method}
@@ -86,7 +90,16 @@ and \code{filebacked.big.matrix()} are intended for the user.
     \item{[}{\code{signature(x = "big.matrix", i = "missing", j = "missing", drop = "missing")}: ... }
     \item{[}{\code{signature(x = "big.matrix", i = "missing", j = "logical", drop = "missing")}: ... }
     \item{[}{\code{signature(x = "big.matrix", i = "logical", j = "logical", drop = "missing")}: ... }
-    \item{[}{\code{signature(x = "big.matrix", i = "logical", j = "missing", drop = "missing")}: ... }
+    \item{[}{\code{signature(x = "big.matrix", i = "logical", j = "missing", drop = "logical")}: ... }
+    \item{[}{\code{signature(x = "big.matrix", i = "numeric", j = "numeric", drop = "logical")}: ... }
+    \item{[}{\code{signature(x = "big.matrix", i = "numeric", j = "character", drop = "logical")}: ... }
+    \item{[}{\code{signature(x = "big.matrix", i = "numeric", j = "missing", drop = "logical")}: ... }
+    \item{[}{\code{signature(x = "big.matrix", i = "missing", j = "numeric", drop = "logical")}: ... }
+    \item{[}{\code{signature(x = "big.matrix", i = "missing", j = "character", drop = "logical")}: ... }
+    \item{[}{\code{signature(x = "big.matrix", i = "missing", j = "missing", drop = "logical")}: ... }
+    \item{[}{\code{signature(x = "big.matrix", i = "missing", j = "logical", drop = "logical")}: ... }
+    \item{[}{\code{signature(x = "big.matrix", i = "logical", j = "logical", drop = "logical")}: ... }
+    \item{[}{\code{signature(x = "big.matrix", i = "logical", j = "missing", drop = "logical")}: ... }
     \item{colmax}{\code{signature(x = "big.matrix")}: returns the maximum of each column (or the specified columns, optionally). }
     \item{colmean}{\code{signature(x = "big.matrix")}: returns the mean of each column (or the specified columns, optionally). }
     \item{colmin}{\code{signature(x = "big.matrix")}: returns the min of each column (or the specified columns, optionally). }

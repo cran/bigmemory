@@ -2,7 +2,7 @@
  *  bigmemory: an R package for managing massive matrices using C,
  *  with support for shared memory.
  *
- *  Copyright (C) 2008 John W. Emerson and Michael J. Kane
+ *  Copyright (C) 2009 John W. Emerson and Michael J. Kane
  *
  *  This file is part of bigmemory.
  *
@@ -54,7 +54,6 @@ void* CreateLocalSepColMatrix(long nrow, long ncol)
   int i;
   for (i=0; i < ncol; ++i) 
   {
-    //pMat[i] = new T[nrow];
     pMat[i] = reinterpret_cast<T*>(new char[sizeof(T)*nrow]);
   }
   return reinterpret_cast<void*>(pMat);
@@ -133,6 +132,7 @@ void DestroyLocalSepColMatrix( T** matrix, const long ncol)
     delete [] matrix[i];
   }
   delete matrix;
+
 }
 
 template<typename T>
@@ -147,45 +147,11 @@ void LocalBigMatrix::destroy()
   {
     if (_sepCols)
     {
-      DestroyLocalSepColMatrix(reinterpret_cast<char**>(_pdata), _matrixRows);
-/*
-      switch(_matType)
-      {
-        case 1:
-          DestroyLocalSepColMatrix(reinterpret_cast<char**>(_pdata), _ncol);
-          break;
-        case 2:
-          DestroyLocalSepColMatrix(reinterpret_cast<short**>(_pdata), _ncol);
-          break;
-        case 4:
-          DestroyLocalSepColMatrix(reinterpret_cast<int**>(_pdata), _ncol);
-          break;
-        case 8:
-          DestroyLocalSepColMatrix(reinterpret_cast<double**>(_pdata), _ncol);
-          break;
-      }
-*/
+      DestroyLocalSepColMatrix(reinterpret_cast<char**>(_pdata), _matrixCols);
     }
     else
     {
       DestroyLocalMatrix(reinterpret_cast<char*>(_pdata));
-/*
-      switch(_matType)
-      {
-        case 1:
-          DestroyLocalMatrix(reinterpret_cast<char*>(_pdata));
-          break;
-        case 2:
-          DestroyLocalMatrix(reinterpret_cast<char*>(_pdata));
-          break;
-        case 4:
-          DestroyLocalMatrix(reinterpret_cast<char*>(_pdata));
-          break;
-        case 8:
-          DestroyLocalMatrix(reinterpret_cast<char*>(_pdata));
-          break;
-      }
-*/
     }
     _pdata=NULL;
     _nrow=0;
@@ -306,7 +272,6 @@ void* CreateSharedMatrix( const std::string &sharedName,
 {
   try
   {
-//    shared_memory_object::remove( (sharedName.c_str()) );
     shared_memory_object shm(create_only, sharedName.c_str(), read_write);
     shm.truncate( nebytes + nrow*ncol*sizeof(T) );
     dataRegionPtrs.push_back(
@@ -560,23 +525,6 @@ bool SharedMemoryBigMatrix::destroy()
     	if (_pdata)
     	{
           delete [] reinterpret_cast<char**>(_pdata);
-/*
-      	switch (_matType)
-      	{
-        	case 1:
-          	delete [] reinterpret_cast<char**>(_pdata);
-          	break;
-        	case 2:
-          	delete [] reinterpret_cast<char**>(_pdata);
-          	break;
-        	case 4:
-          	delete [] reinterpret_cast<char**>(_pdata);
-          	break;
-        	case 8:
-          	delete [] reinterpret_cast<char**>(_pdata);
-          	break;
-      	}
-*/
     	}
   	}
   	else
@@ -943,8 +891,6 @@ bool FileBackedBigMatrix::destroy()
     _nrow=0;
     _matrixRows=0;
     _matrixCols=0;
-    _colOffset=0;
-    _rowOffset=0;
     _pdata=0;
     _colNames.clear();
     _rowNames.clear();

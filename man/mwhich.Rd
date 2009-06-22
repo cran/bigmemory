@@ -40,11 +40,12 @@ a vector of row indices satisfying the criteria.
 \seealso{\code{\link{big.matrix}}, \code{\link{which}}}
 \examples{
 x <- as.big.matrix(matrix(1:30, 10, 3))
+colnames(x) <- c("A", "B", "C")
 x[,]
 x[mwhich(x, 1:2, list(c(2,3), c(11,17)),
                    list(c('ge','le'), c('gt', 'lt')), 'OR'),]
 
-x[mwhich(x, 1:2, list(c(2,3), c(11,17)), 
+x[mwhich(x, c("A","B"), list(c(2,3), c(11,17)), 
                    list(c('ge','le'), c('gt', 'lt')), 'AND'),]
 
 # These should produce the same answer with a regular matrix:
@@ -52,7 +53,7 @@ y <- matrix(1:30, 10, 3)
 y[mwhich(y, 1:2, list(c(2,3), c(11,17)),
                    list(c('ge','le'), c('gt', 'lt')), 'OR'),]
 
-y[mwhich(y, 1:2, list(c(2,3), c(11,17)),
+y[mwhich(y, -3, list(c(2,3), c(11,17)),
                    list(c('ge','le'), c('gt', 'lt')), 'AND'),]
 
 
