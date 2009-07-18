@@ -7,23 +7,21 @@ This is a wrapper to Thomas Lumley's \code{\link[biglm:biglm-package]{biglm}}
 package, allowing its use with data stored in \code{\link{big.matrix}} objects.
 }
 \usage{
-biglm.big.matrix(formula, data, fc=NULL, chunksize=NULL, weights=NULL, sandwich=FALSE)
-bigglm.big.matrix(formula, data, family=gaussian(), fc=NULL, chunksize=NULL,
-          weights=NULL, sandwich=FALSE, maxit=8, tolerance=1e-7, start=NULL)
+biglm.big.matrix(formula, data, chunksize=NULL, ..., fc=NULL, 
+  getNextChunkFunc=NULL)
+bigglm.big.matrix(formula, data, chunksize=NULL, ..., fc=NULL,
+  getNextChunkFunc=NULL)
 
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{formula}{a model \code{\link{formula}}.}
-  \item{data}{a \code{\link{big.matrix}}.}
-  \item{fc}{either column indices or names of variables that are factors.}
-  \item{chunksize}{an integer maximum size of chunks of data to process iteratively.}
-  \item{weights}{a one-sided, single term formula specifying weights (see \pkg{biglm} for more information).}
-  \item{sandwich}{\code{TRUE} to compute the Huber/White sandwich covariance matrix (see \pkg{biglm} for more information).}
-  \item{family}{a glm family object}
-  \item{maxit}{maximum number of Fisher scoring iterations.}
-  \item{tolerance}{tolerance for change in coefficient (as multiple of standard error).}
-  \item{start}{optional starting values for coefficients.  If \code{NULL}, \code{maxit} should be at least 2 as some quantities will not be computed on the first iteration.}
+  \item{data}{a \code{\link{big.matrix}} or \code{data.frame} object.}
+  \item{chunksize}{an integer maximum size of chunks of data to process iteratively; if this argument is not given, a suitable default is supplied}
+  \item{fc}{the names of variables that are factors}
+  \item{getNextChunkFunc}{a function which generates the next set of indices for the next chunk;  if this argument is not given, a suitable default is supplied
+}
+  \item{...}{the other parameters which can be specified are those supported by biglm and bigglm}
 }
 \details{
 See \pkg{biglm} package for more information;  \code{chunksize} defaults to\cr
@@ -35,7 +33,7 @@ an object of class \code{biglm}.
 \references{Algorithm AS274 Applied Statistics (1992) Vol. 41, No.2
 
 Thomas Lumley (2005). biglm: bounded memory linear and generalized
-  linear models. R package version 0.4.
+  linear models. R package version 0.7.
 }
 \author{Michael J. Kane}
 \seealso{\code{\link[biglm:biglm-package]{biglm}}, \code{\link{big.matrix}}}
