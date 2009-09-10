@@ -21,10 +21,11 @@
  *  http://www.r-project.org/Licenses/
  */
 
-#include "BigMemoryMutex.h"
-#include <boost/interprocess/sync/named_mutex.hpp>
-#include <boost/interprocess/sync/named_upgradable_mutex.hpp>
+#include <cstdio>
+#include <cstring>
 #include <boost/uuid.hpp>
+#include "bigmemoryMutex.h"
+#include <boost/interprocess/sync/named_mutex.hpp>
 
 using namespace boost::interprocess;
 

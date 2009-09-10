@@ -1,0 +1,7 @@
+####################################################################
+# configure for package bigmemory
+# John W. Emerson and Michael Kane
+#
+# We use R to detect the platform and tweak the Makevars
+
+${R_HOME}/bin/R CMD BATCH configure.R

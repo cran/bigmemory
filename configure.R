@@ -1,13 +1,20 @@
+cppFlags = 'PKG_CPPFLAGS=-I../include'
+pkgLibs = ''
+
 if (Sys.info()[['sysname']] == 'Linux')
 {
-	file.copy('src/Makevars.linux', 'src/Makevars', overwrite=TRUE)
+  pkgLibs = 'PKG_LIBS=-lrt'
 }
-if (Sys.info()[['sysname']] == 'Darwin')
+
+# Is it a REvo build?
+if (Sys.info()[['sysname']] == "Windows" & version$os == 'intel64')
 {
-	file.copy('src/Makevars.darwin', 'src/Makevars', overwrite=TRUE)
+  cppFlags = paste(cppFlags, '-GX')
 }
-# Last and least, copy the windows Makevar file when appropriate
-if (Sys.info()[['sysname']] == 'Windows')
+
+configText = cppFlags
+if (pkgLibs != '')
 {
-	file.copy('src/Makevars.windows', 'src/Makevars', overwrite=TRUE)
+  configText = paste(pkgLibs, cppFlags, sep="\n")
 }
+write( configText, 'src/Makevars' )

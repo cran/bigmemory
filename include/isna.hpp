@@ -21,26 +21,27 @@
  *  http://www.r-project.org/Licenses/
  */
 
-#ifndef _SHARED_COUNTER_H
-#define _SHARED_COUNTER_H
+#ifndef ISNA_HPP
+#define ISNA_HPP
 
-#include <string>
-#include <boost/interprocess/mapped_region.hpp>
+#include "bigmemoryDefines.h"
 
-// Note: Shared Counters are not mutex protected.
-class SharedCounter
-{
-  public:
-    SharedCounter(): _pVal(NULL),_pRegion(NULL){};
-    ~SharedCounter(){reset();};
+inline bool isna( const char val ) { return NA_CHAR == val; };
+inline bool isna( const short val ) { return NA_SHORT == val; };
+inline bool isna( const int val ) { return NA_INTEGER == val; };
+inline bool isna( const double val ) { return isnan(val); };
 
-    bool init( const std::string resourceName);
-  public:
-    long get() const;
-    bool reset();
-  private:
-    long *_pVal;  
-    boost::interprocess::mapped_region *_pRegion;
-    std::string _resourceName;
-};
-#endif //_SHARED_COUNTER_H
+inline bool neginf( const char val ) {return false;};
+inline bool neginf( const short val ) {return false;};
+inline bool neginf( const int val ) {return false;};
+#ifdef _MSC_VER
+inline bool isinf( const double val ) {return !_finite(val);}
+#endif
+inline bool neginf( const double val ) {return isinf(val) && val < 0;};
+
+inline bool posinf( const char val );
+inline bool posinf( const short val );
+inline bool posinf( const int val );
+inline bool posinf( const double val );
+
+#endif //ISNA_HPP

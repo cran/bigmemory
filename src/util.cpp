@@ -28,7 +28,7 @@
 vector<string> RChar2StringVec( SEXP charVec )
 {
   vector<string> ret( GET_LENGTH(charVec) );
-  unsigned long i;
+  vector<string>::size_type i;
   for (i=0; i < ret.size(); ++i)
   {
     ret[i] = string(CHAR(STRING_ELT(charVec, i)));
@@ -37,10 +37,10 @@ vector<string> RChar2StringVec( SEXP charVec )
 }
 
 vector<string> RChar2StringVec( SEXP charVec, 
-  const vector<unsigned long> &indices )
+  const vector<index_type> &indices )
 {
   vector<string> ret( indices.size() );
-  unsigned long i;
+  vector<string>::size_type i;
   for (i=0; i < indices.size(); ++i)
   {
     ret[i] = string(CHAR(STRING_ELT(charVec, indices[i]-1)));
@@ -58,7 +58,7 @@ SEXP StringVec2RChar( const vector<string> &strVec )
   if (strVec.empty())
     return NULL_USER_OBJECT;
   SEXP ret = PROTECT(allocVector(STRSXP, strVec.size()));
-  unsigned long i;
+  vector<string>::size_type i;
   for (i=0; i < strVec.size(); ++i)
   {
     SET_STRING_ELT(ret, i, mkChar(strVec[i].c_str()));

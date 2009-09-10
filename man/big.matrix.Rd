@@ -18,16 +18,20 @@ may be in-memory (shared or not), or file backed (which is always shareable).
 }
 \usage{
 big.matrix(nrow, ncol, type = "integer", init = NULL, dimnames = NULL,
-           separated = FALSE, shared = FALSE, backingfile = NULL, backingpath = NULL,
-           descriptorfile = NULL, preserve = TRUE, nebytes = 0)
-shared.big.matrix(nrow, ncol, type = "integer", init = NULL, dimnames = NULL,
-           separated = FALSE, backingfile = NULL, backingpath = NULL, descriptorfile = NULL,
-           preserve = TRUE, nebytes = 0)
-filebacked.big.matrix(nrow, ncol, type = "integer", init = NULL, dimnames = NULL,
-           separated = FALSE, backingfile = NULL, backingpath = NULL, descriptorfile = NULL,
-           preserve = TRUE, nebytes = 0)
+           separated = FALSE, shared = FALSE, backingfile = NULL,
+           backingpath = NULL, descriptorfile = NULL, preserve = TRUE,
+           nebytes = 0)
+shared.big.matrix(nrow, ncol, type = "integer", init = NULL,
+           dimnames = NULL, separated = FALSE, backingfile = NULL,
+           backingpath = NULL, descriptorfile = NULL, preserve = TRUE,
+           nebytes = 0)
+filebacked.big.matrix(nrow, ncol, type = "integer", init = NULL,
+           dimnames = NULL, separated = FALSE, backingfile = NULL,
+           backingpath = NULL, descriptorfile = NULL, preserve = TRUE,
+           nebytes = 0)
 as.big.matrix(x, type = NULL, separated = FALSE, shared = FALSE,
-              backingfile = NULL, backingpath = NULL, descriptorfile = NULL, preserve = TRUE)
+              backingfile = NULL, backingpath = NULL,
+              descriptorfile = NULL, preserve = TRUE)
 is.big.matrix(x)
 is.separated(x)
 is.shared(x)
@@ -61,7 +65,7 @@ data in different ways.  The basic (or default)
 \code{big.matrix} is not shared across processes
 and is limited to available RAM.  A shared \code{big.matrix} has identical
 size constraints as the basic \code{big.matrix}, but may be shared across
-separate Rprocesses.  A file-backed \code{big.matrix} may
+separate R processes.  A file-backed \code{big.matrix} may
 exceed available RAM by using hard drive space, and may also be
 shared across processes.  The atomic types of these matrices may be
 double, integer, short, or char (8, 4, 2, and 1 bytes, respectively).
@@ -77,7 +81,9 @@ recognizing that a huge R \code{matrix} will be created).
 If \code{x} has a huge number of rows, then the use of \code{rownames}
 will be extremely memory-intensive and should be avoided.  If \code{x} has a huge
 number of columns, the user might want to store the transpose as there is 
-overhead of a pointer (and possibly mutexes) for each column in the matrix.
+overhead from the mutexes for each column in the matrix.  This concern will
+change in versions 4.0 and beyond when mutex will be provided optionally through
+a new package, synchronicity.
 
 If \code{separated} is \code{TRUE}, then the memory is allocated into separate
 vectors for each column.  If \code{separated} is \code{FALSE}, the matrix is
@@ -97,8 +103,8 @@ across R sessions.
 
 A file-backed \code{big.matrix} may exceed available RAM in size by using a file
 cache (or possibly multiple file caches, if \code{separated} is \code{TRUE}).
-This can incur a substantial performance penalty for large matrices, but could
-be useful nonetheless.  A side-effect of creating a filebacked object is
+This can incur a performance penalty for large matrices, but is obviously
+useful nonetheless.  A side-effect of creating a filebacked object is
 not only the filebacking(s), but a descriptor file (in the same directory) that can
 be used for subsequent attachments (see \code{\link{attach.big.matrix}}).
 }

@@ -21,7 +21,7 @@
  *  http://www.r-project.org/Licenses/
  */
 
-#include "BigMemoryMutex.h"
+#include "bigmemoryMutex.h"
 #include "util.h"
 
 #include <R.h>

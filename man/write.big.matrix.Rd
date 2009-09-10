@@ -8,11 +8,13 @@ suitably-formatted ASCII file, or
 write the contents of a \code{\link{big.matrix}} to a file.
 }
 \usage{
-write.big.matrix(x, fileName = NA, row.names = FALSE, col.names = FALSE, sep=',')
-read.big.matrix(fileName, sep = ',', header = FALSE, row.names = NULL, col.names = NULL,
-        type = NA, skip = 0, separated = FALSE, shared = FALSE,
-        backingfile = NULL, backingpath = NULL, descriptorfile = NULL, preserve = TRUE,
-        extraCols = NULL)
+write.big.matrix(x, fileName = NA, row.names = FALSE,
+                 col.names = FALSE, sep=',')
+read.big.matrix(fileName, sep = ',', header = FALSE,
+                row.names = NULL, col.names = NULL, type = NA,
+                skip = 0, separated = FALSE, shared = FALSE,
+                backingfile = NULL, backingpath = NULL,
+                descriptorfile = NULL, preserve = TRUE, extraCols = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

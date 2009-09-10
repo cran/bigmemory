@@ -1,5 +1,0 @@
-Remove unnecessary nrow and ncol (perhaps) arguments in
-ConnectSharedSepMatrix and ConnectSharedMatrix.
-Probably requires changes elsewhere.
-
-Ditto, ConnectFileBackedMatrix and ConnectFileBackedSepMatrix.

@@ -29,6 +29,12 @@ for example).  However, the user may create an additional layer of mutexes
 using these functions.  This may be important in certain shared memory applications.
 
 Note that \code{\link{describe}} should be used to retrieve the \code{rw.mutex} information.
+
+Mutexes will be stripped out of bigmemory in versions 4.0 and beyond, leaving them
+available (optionally) to the user in a new package, synchronicity, in the Fall of
+2009.  This is largely for performance reasons with bigmemory, where the vast
+majority of shared memory work is read-only or involves algorithms that don't
+risk read/write conflicts.
 }
 \value{
 A new instance of type \code{rw.mutex} is returned.

@@ -31,7 +31,8 @@
 #include <string>
 #include <vector>
 
-#include "BigMemoryMutex.h"
+#include "bigmemoryDefines.h"
+#include "bigmemoryMutex.h"
 #include "SharedCounter.h"
 
 using namespace std;
@@ -42,7 +43,7 @@ typedef boost::shared_ptr<MappedRegion> MappedRegionPtr;
 typedef vector<MappedRegionPtr> MappedRegionPtrs;
 typedef boost::shared_ptr<BigMemoryMutex> MutexPtr;
 typedef vector<MutexPtr> MutexPtrs;
-typedef vector<unsigned long> Columns;
+typedef vector<index_type> Columns;
 
 class BigMatrix : public boost::noncopyable
 {
@@ -59,11 +60,11 @@ class BigMatrix : public boost::noncopyable
 			reinterpret_cast<char*>(_pdata)+nebytes());};
     
     // Accessors
-    long ncol() const {return _ncol;};
-    long nrow() const {return _nrow;};
-    long num_rows() const {return _matrixRows;};
-    long num_columns() const {return _matrixCols;};
-    long nebytes() const {return _nebytes;};
+    index_type ncol() const {return _ncol;};
+    index_type nrow() const {return _nrow;};
+    index_type num_rows() const {return _matrixRows;};
+    index_type num_columns() const {return _matrixCols;};
+    index_type nebytes() const {return _nebytes;};
     int matrix_type() const {return _matType;};
     bool shared() const {return _shared;}; 
     bool separated_columns() const {return _sepCols;};
@@ -104,13 +105,13 @@ class BigMatrix : public boost::noncopyable
       return true;
     };
   
-    bool ncol( long newNumCols )
+    bool ncol( index_type newNumCols )
     {
       _ncol=newNumCols;
       return true;
     }
     
-    bool nrow( long newNumCols )
+    bool nrow( index_type newNumCols )
     {
       _nrow=newNumCols;
       return true;
@@ -121,11 +122,11 @@ class BigMatrix : public boost::noncopyable
   // Data Members
 
   protected:
-    long _ncol;
-    long _nrow;
-		long _matrixRows;
-		long _matrixCols;
-    long _nebytes;
+    index_type _ncol;
+    index_type _nrow;
+		index_type _matrixRows;
+		index_type _matrixCols;
+    index_type _nebytes;
     int _matType;
     void* _pdata;
     bool _shared;
@@ -139,13 +140,13 @@ class LocalBigMatrix : public BigMatrix
   public:
     LocalBigMatrix() : BigMatrix(){_shared=false;};
     virtual ~LocalBigMatrix(){destroy();};
-    bool create(const long numRow, const long numCol, const long numEbytes,
+    bool create(const index_type numRow, const index_type numCol, const index_type numEbytes,
                 const int matrixType, const bool sepCols);
   protected:
     void destroy();
 // TODO:  IMPLEMENT THESE FUNCTIONS WHEN _sepCols IS true.
-//    bool remove_column(long col);
-//    bool insert_column(long pos, double init, string name);
+//    bool remove_column(index_type col);
+//    bool insert_column(index_type pos, double init, string name);
 };
 
 class SharedBigMatrix : public BigMatrix
@@ -187,10 +188,10 @@ class SharedMemoryBigMatrix : public SharedBigMatrix
   public:
     SharedMemoryBigMatrix():SharedBigMatrix(){};
     virtual ~SharedMemoryBigMatrix(){destroy();};
-    virtual bool create( const long numRow, const long numCol, 
-			const long numEbytes, const int matrixType, const bool sepCols);
-    virtual bool connect( const std::string &uuid, const long numRow, 
-      const long numCol, const long numEbytes, const int matrixType,
+    virtual bool create( const index_type numRow, const index_type numCol, 
+			const index_type numEbytes, const int matrixType, const bool sepCols);
+    virtual bool connect( const std::string &uuid, const index_type numRow, 
+      const index_type numCol, const index_type numEbytes, const int matrixType,
       const bool sepCols);
   protected:
     virtual bool destroy();
@@ -203,13 +204,13 @@ class FileBackedBigMatrix : public SharedBigMatrix
     FileBackedBigMatrix():SharedBigMatrix(){};
     virtual ~FileBackedBigMatrix(){destroy();};
     virtual bool create( const std::string &fileName, 
-      const std::string &filePath,const long numRow, 
-      const long numCol, const long numEbytes,
+      const std::string &filePath,const index_type numRow, 
+      const index_type numCol, const index_type numEbytes,
       const int matrixType, const bool sepCols, 
       const bool preserve);
     virtual bool connect( const std::string &sharedName, 
       const std::string &fileName, const std::string &filePath,
-      const long numRow, const long numCol, const long numEbytes,
+      const index_type numRow, const index_type numCol, const index_type numEbytes,
       const int matrixType, const bool sepCols, const bool preserve);
     std::string file_name() const {return _fileName;};
     std::string file_path() const {return _filePath;};

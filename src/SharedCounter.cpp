@@ -52,10 +52,10 @@ bool SharedCounter::init( const std::string resourceName )
       _resourceName.c_str(), 
       boost::interprocess::read_write);
     // It's a new counter.
-    shm.truncate( sizeof(long) );
+    shm.truncate( sizeof(index_type) );
     _pRegion = new boost::interprocess::mapped_region(shm, 
       boost::interprocess::read_write);
-    _pVal = reinterpret_cast<long*>(_pRegion->get_address());
+    _pVal = reinterpret_cast<index_type*>(_pRegion->get_address());
     *_pVal = 1;
   }
   catch(std::exception &ex)
@@ -67,13 +67,13 @@ bool SharedCounter::init( const std::string resourceName )
       boost::interprocess::read_write);
     _pRegion = new boost::interprocess::mapped_region(shm, 
       boost::interprocess::read_write);
-    _pVal = reinterpret_cast<long*>(_pRegion->get_address());
+    _pVal = reinterpret_cast<index_type*>(_pRegion->get_address());
     ++(*_pVal);
   }
   return true;
 }
 
-long SharedCounter::get() const
+index_type SharedCounter::get() const
 {
   return _pVal == NULL ? 0 : *_pVal;
 }
