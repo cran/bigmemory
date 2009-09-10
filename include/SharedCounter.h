@@ -21,29 +21,28 @@
  *  http://www.r-project.org/Licenses/
  */
 
-#ifndef BIGMEMORY_DEFINES_H
-#define BIGMEMORY_DEFINES_H
+#ifndef _SHARED_COUNTER_H
+#define _SHARED_COUNTER_H
 
-extern "C"
+#include <string>
+#include <boost/interprocess/mapped_region.hpp>
+
+#include "bigmemoryDefines.h"
+
+// Note: Shared Counters are not mutex protected.
+class SharedCounter
 {
-  #include <Rdefines.h>
-}
+  public:
+    SharedCounter(): _pVal(NULL),_pRegion(NULL){};
+    ~SharedCounter(){reset();};
 
-#define NA_CHAR CHAR_MIN
-#define NA_SHORT SHRT_MIN
-#define R_INT_MIN (1+INT_MIN)
-#define R_INT_MAX INT_MAX
-#define R_SHORT_MIN (1+SHRT_MIN)
-#define R_SHORT_MAX SHRT_MAX
-#define R_CHAR_MIN (1+CHAR_MIN)
-#define R_CHAR_MAX CHAR_MAX
-#define R_DOUBLE_MIN R_NegInf
-#define R_DOUBLE_MAX R_PosInf
-
-#ifdef HAVE_LONG_DOUBLE
-# define LDOUBLE long double
-#else
-# define LDOUBLE double
-#endif
-
-#endif //BIGMEMORY_DEFINES_H
+    bool init( const std::string resourceName);
+  public:
+    index_type get() const;
+    bool reset();
+  private:
+    index_type *_pVal;  
+    boost::interprocess::mapped_region *_pRegion;
+    std::string _resourceName;
+};
+#endif //_SHARED_COUNTER_H

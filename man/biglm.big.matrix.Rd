@@ -3,7 +3,7 @@
 \alias{bigglm.big.matrix}
 \title{Use Thomas Lumley's ``biglm'' package with a ``big.matrix''}
 \description{
-This is a wrapper to Thomas Lumley's \code{\link[biglm:biglm-package]{biglm}}
+This is a wrapper to Thomas Lumley's biglm
 package, allowing its use with data stored in \code{\link{big.matrix}} objects.
 }
 \usage{
@@ -26,6 +26,9 @@ bigglm.big.matrix(formula, data, chunksize=NULL, ..., fc=NULL,
 \details{
 See \pkg{biglm} package for more information;  \code{chunksize} defaults to\cr
 \code{floor(nrow(data)/ncol(data)^2)}.
+
+These functions will be removed from bigmemory and located in a new package,
+biganalytics or bigmemoryanalytics, in the Fall of 2009.
 }
 \value{
 an object of class \code{biglm}.
@@ -36,7 +39,7 @@ Thomas Lumley (2005). biglm: bounded memory linear and generalized
   linear models. R package version 0.7.
 }
 \author{Michael J. Kane}
-\seealso{\code{\link[biglm:biglm-package]{biglm}}, \code{\link{big.matrix}}}
+\seealso{\code{\link{big.matrix}}}
 \examples{
 # This example is quite silly, using the iris
 # data.  But it shows that our wrapper to Lumley's biglm() function produces

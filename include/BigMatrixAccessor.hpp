@@ -9,7 +9,7 @@ template<typename T>
 class BigMatrixAccessor
 {
   public:
-    BigMatrixAccessor( T* pData, const unsigned long nrow)
+    BigMatrixAccessor( T* pData, const index_type nrow)
     {
       _pMat = pData;
       _nrow = nrow;
@@ -21,11 +21,11 @@ class BigMatrixAccessor
       _nrow = bm.num_rows();
     }
 
-    inline T* operator[](const unsigned long col) {return _pMat+_nrow*col;}
+    inline T* operator[](const index_type col) {return _pMat+_nrow*col;}
 
   protected:
     T *_pMat;
-    long _nrow;
+    index_type _nrow;
 };
 
 template<typename T>
@@ -37,7 +37,7 @@ class SepBigMatrixAccessor
       _ppMat = reinterpret_cast<T**>(bm.matrix());
     }
 
-    inline T* operator[](const unsigned long col) {return _ppMat[col];}
+    inline T* operator[](const index_type col) {return _ppMat[col];}
   protected:
     T **_ppMat;
 };

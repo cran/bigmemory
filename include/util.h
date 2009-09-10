@@ -28,12 +28,14 @@
 #include <string>
 #include <Rdefines.h>
 
+#include "bigmemoryDefines.h"
+
 using namespace std;
 
 vector<string> RChar2StringVec( SEXP charVec );
 
 vector<string> RChar2StringVec( SEXP charVec, 
-  const vector<unsigned long> &indices );
+  const vector<index_type> &indices );
 
 SEXP String2RChar(const std::string &str);
 
@@ -43,16 +45,16 @@ SEXP StringVec2RChar( const vector<string> &strVec );
 
 template<typename T>
 SEXP StringVec2RChar( const vector<string> &strVec,
-  T indices, const unsigned long indicesLength )
+  T indices, const index_type indicesLength )
 {
   if (strVec.empty())
     return NULL_USER_OBJECT;
   SEXP ret = PROTECT(allocVector(STRSXP, indicesLength));
-  unsigned long i;
+  index_type i;
   for (i=0; i < indicesLength; ++i)
   {
     SET_STRING_ELT(ret, i, 
-      mkChar(strVec[static_cast<unsigned long>(indices[i])-1].c_str()));
+      mkChar(strVec[static_cast<index_type>(indices[i])-1].c_str()));
   }
   UNPROTECT(1);
   return ret;
@@ -64,11 +66,11 @@ struct NewVec;
 
 template<>
 struct NewVec<int>
-{SEXP operator()(long n) const {return NEW_INTEGER(n);};};
+{SEXP operator()(index_type n) const {return NEW_INTEGER(n);};};
 
 template<>
 struct NewVec<double>
-{SEXP operator()(long n) const {return NEW_NUMERIC(n);};};
+{SEXP operator()(index_type n) const {return NEW_NUMERIC(n);};};
 
 template<typename T>
 struct VecPtr;

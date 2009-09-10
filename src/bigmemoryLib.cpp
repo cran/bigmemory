@@ -26,7 +26,7 @@
                     // function
 #include "BigMatrix.h"
 #include "BigMatrixAccessor.hpp"
-#include "BigMemoryDefines.h"
+#include "bigmemoryDefines.h"
 #include "isna.hpp"
 
 #include <math.h>
@@ -58,9 +58,9 @@
 // --------------------- min -------------------------------------------
 
 template<typename T>
-Rboolean tmin(T *x, long n, int *value, Rboolean narm, T NA_VALUE)
+Rboolean tmin(T *x, index_type n, int *value, Rboolean narm, T NA_VALUE)
 {
-  long i;
+  index_type i;
   int s = 0 /* -Wall */;
   Rboolean updated = (Rboolean)FALSE;
 
@@ -81,11 +81,11 @@ Rboolean tmin(T *x, long n, int *value, Rboolean narm, T NA_VALUE)
   return(updated);
 }
 
-Rboolean tmin(double *x, long n, double *value,
+Rboolean tmin(double *x, index_type n, double *value,
                       Rboolean narm, double NA_VALUE)
 {
   double s = 0.0 /* -Wall */;
-  long i;
+  index_type i;
   Rboolean updated = (Rboolean)FALSE;
 
   /* s = R_PosInf; */
@@ -109,9 +109,9 @@ Rboolean tmin(double *x, long n, double *value,
 // --------------------- max -------------------------------------------
 
 template<typename T>
-Rboolean tmax(T *x, long n, int *value, Rboolean narm, T NA_VALUE)
+Rboolean tmax(T *x, index_type n, int *value, Rboolean narm, T NA_VALUE)
 {
-  long i;
+  index_type i;
   int s = 0 /* -Wall */;
   Rboolean updated = (Rboolean)FALSE;
 
@@ -136,7 +136,7 @@ Rboolean tmax(double *x, int n, double *value, Rboolean narm,
               double NA_VALUE)
 {
   double s = 0.0 /* -Wall */;
-  long i;
+  index_type i;
   Rboolean updated = (Rboolean)FALSE;
 
   for (i = 0; i < n; i++) {
@@ -159,10 +159,10 @@ Rboolean tmax(double *x, int n, double *value, Rboolean narm,
 // --------------------- sum -------------------------------------------
 
 template<typename T>
-Rboolean tsum(T *x, long n, double *value, Rboolean narm, T NA_VALUE)
+Rboolean tsum(T *x, index_type n, double *value, Rboolean narm, T NA_VALUE)
 {
   LDOUBLE s = 0.0;
-  long i;
+  index_type i;
   Rboolean updated = (Rboolean)FALSE;
 
   for (i = 0; i < n; i++) {
@@ -185,7 +185,7 @@ Rboolean tsum(double *x, int n, double *value, Rboolean narm,
               double NA_VALUE)
 {
   LDOUBLE s = 0.0;
-  long i;
+  index_type i;
   Rboolean updated = (Rboolean)FALSE;
 
   for (i = 0; i < n; i++) {
@@ -205,7 +205,7 @@ template<typename T>
 Rboolean tprod(T *x, int n, double *value, Rboolean narm, T NA_VALUE)
 {
   LDOUBLE s = 1.0;
-  long i;
+  index_type i;
   Rboolean updated = (Rboolean)FALSE;
 
   for (i = 0; i < n; i++) {
@@ -229,11 +229,11 @@ Rboolean tprod(T *x, int n, double *value, Rboolean narm, T NA_VALUE)
   return(updated);
 }
 
-Rboolean tprod(double *x, long n, double *value, Rboolean narm,
+Rboolean tprod(double *x, index_type n, double *value, Rboolean narm,
                double NA_VALUE)
 {
   LDOUBLE s = 1.0;
-  long i;
+  index_type i;
   Rboolean updated = (Rboolean)FALSE;
 
   for (i = 0; i < n; i++) {
@@ -250,10 +250,10 @@ Rboolean tprod(double *x, long n, double *value, Rboolean narm,
 // --------------------- mean -------------------------------------------
 
 template<typename T>
-Rboolean tmean(T *x, long n, double *value, Rboolean narm, T NA_VALUE)
+Rboolean tmean(T *x, index_type n, double *value, Rboolean narm, T NA_VALUE)
 {
   LDOUBLE s = 0.0;
-  long i;
+  index_type i;
   Rboolean updated = (Rboolean)TRUE;
 
   for (i = 0; i < n; i++) {
@@ -270,11 +270,11 @@ Rboolean tmean(T *x, long n, double *value, Rboolean narm, T NA_VALUE)
   return(updated);
 }
 
-Rboolean tmean(double *x, long n, double *value, Rboolean narm,
+Rboolean tmean(double *x, index_type n, double *value, Rboolean narm,
                double NA_VALUE)
 {
   LDOUBLE s = 0.0, t = 0.0;
-  long i;
+  index_type i;
   Rboolean updated = (Rboolean)TRUE;
 
   for (i = 0; i < n; i++) {
@@ -299,12 +299,12 @@ Rboolean tmean(double *x, long n, double *value, Rboolean narm,
 // If this works for all 4 types, could we simplify in other cases, too???
 
 template<typename T>
-Rboolean tvar(T *x, long n, double *value, Rboolean narm, T NA_VALUE)
+Rboolean tvar(T *x, index_type n, double *value, Rboolean narm, T NA_VALUE)
 {
   tmean(x, n, value, narm, NA_VALUE);
   double avg = *value;
 
-  long i;
+  index_type i;
   Rboolean updated = (Rboolean)TRUE;
   
   double sum=0.0;
@@ -332,59 +332,59 @@ Rboolean tvar(T *x, long n, double *value, Rboolean narm, T NA_VALUE)
   if (pMat->separated_columns())                                             \
   {                                                                          \
     SepBigMatrixAccessor<dataT> Mat(*pMat);                                  \
-    long i=0;                                                                \
+    index_type i=0;                                                                \
     for (i=0; i < nCols; ++i) {                                              \
-      fun(Mat[(long)pCols[i]-1], pMat->nrow(), &pRet[i], \
+      fun(Mat[(index_type)pCols[i]-1], pMat->nrow(), &pRet[i], \
                   (Rboolean)LOGICAL_VALUE(narm), NA_VALUE);                  \
     }                                                                        \
   }                                                                          \
   else                                                                       \
   {                                                                          \
     BigMatrixAccessor<dataT> Mat(*pMat);                                     \
-    long i=0;                                                                \
+    index_type i=0;                                                                \
     for (i=0; i < nCols; ++i) {                                              \
-      fun(Mat[(long)pCols[i]-1], pMat->nrow(), &pRet[i], \
+      fun(Mat[(index_type)pCols[i]-1], pMat->nrow(), &pRet[i], \
                     (Rboolean)LOGICAL_VALUE(narm), NA_VALUE);                \
     }                                                                        \
   }
 
 template<typename dataT, typename retT>
-void CMinCol(SEXP bigMatrixAddr, retT *pRet, double *pCols, long nCols,
+void CMinCol(SEXP bigMatrixAddr, retT *pRet, double *pCols, index_type nCols,
              SEXP narm, dataT NA_VALUE)
 {
   CALL_FUN(tmin);
 }
 
 template<typename dataT, typename retT>
-void CMaxCol(SEXP bigMatrixAddr, retT *pRet, double *pCols, long nCols,
+void CMaxCol(SEXP bigMatrixAddr, retT *pRet, double *pCols, index_type nCols,
              SEXP narm, dataT NA_VALUE)
 {
   CALL_FUN(tmax);
 }
 
 template<typename dataT, typename retT>
-void CSumCol(SEXP bigMatrixAddr, retT *pRet, double *pCols, long nCols,
+void CSumCol(SEXP bigMatrixAddr, retT *pRet, double *pCols, index_type nCols,
              SEXP narm, dataT NA_VALUE)
 {
   CALL_FUN(tsum);
 }
 
 template<typename dataT, typename retT>
-void CProdCol(SEXP bigMatrixAddr, retT *pRet, double *pCols, long nCols,
+void CProdCol(SEXP bigMatrixAddr, retT *pRet, double *pCols, index_type nCols,
              SEXP narm, dataT NA_VALUE)
 {
   CALL_FUN(tprod);
 }
 
 template<typename dataT, typename retT>
-void CMeanCol(SEXP bigMatrixAddr, retT *pRet, double *pCols, long nCols,
+void CMeanCol(SEXP bigMatrixAddr, retT *pRet, double *pCols, index_type nCols,
              SEXP narm, dataT NA_VALUE)
 {
   CALL_FUN(tmean);
 }
 
 template<typename dataT, typename retT>
-void CVarCol(SEXP bigMatrixAddr, retT *pRet, double *pCols, long nCols,
+void CVarCol(SEXP bigMatrixAddr, retT *pRet, double *pCols, index_type nCols,
              SEXP narm, dataT NA_VALUE)
 {
   CALL_FUN(tvar);
@@ -405,7 +405,7 @@ extern "C"
 #define mainsetup()                                              \
   SEXP ret = R_NilValue;                                         \
   double *pCols = NUMERIC_DATA(col);                             \
-  long nCols = GET_LENGTH(col);                                  \
+  index_type nCols = GET_LENGTH(col);                                  \
   int mt = INTEGER_VALUE(matType);
 
 #define casesetup(TYPE, NEW_TYPE, TYPE_DATA)                     \

@@ -21,27 +21,31 @@
  *  http://www.r-project.org/Licenses/
  */
 
-#ifndef ISNA_HPP
-#define ISNA_HPP
+#ifndef BIGMEMORY_DEFINES_H
+#define BIGMEMORY_DEFINES_H
 
-#include "BigMemoryDefines.h"
+typedef long long index_type;
 
-inline bool isna( const char val ) { return NA_CHAR == val; };
-inline bool isna( const short val ) { return NA_SHORT == val; };
-inline bool isna( const int val ) { return NA_INTEGER == val; };
-inline bool isna( const double val ) { return isnan(val); };
+extern "C"
+{
+  #include <Rdefines.h>
+}
 
-inline bool neginf( const char val ) {return false;};
-inline bool neginf( const short val ) {return false;};
-inline bool neginf( const int val ) {return false;};
-#ifdef _MSC_VER
-inline bool isinf( const double val ) {return !_finite(val);}
+#define NA_CHAR CHAR_MIN
+#define NA_SHORT SHRT_MIN
+#define R_INT_MIN (1+INT_MIN)
+#define R_INT_MAX INT_MAX
+#define R_SHORT_MIN (1+SHRT_MIN)
+#define R_SHORT_MAX SHRT_MAX
+#define R_CHAR_MIN (1+CHAR_MIN)
+#define R_CHAR_MAX CHAR_MAX
+#define R_DOUBLE_MIN R_NegInf
+#define R_DOUBLE_MAX R_PosInf
+
+#ifdef HAVE_LONG_DOUBLE
+# define LDOUBLE long double
+#else
+# define LDOUBLE double
 #endif
-inline bool neginf( const double val ) {return isinf(val) && val < 0;};
 
-inline bool posinf( const char val );
-inline bool posinf( const short val );
-inline bool posinf( const int val );
-inline bool posinf( const double val );
-
-#endif //ISNA_HPP
+#endif //BIGMEMORY_DEFINES_H

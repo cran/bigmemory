@@ -31,6 +31,7 @@
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/interprocess/sync/scoped_lock.hpp>
 #include <boost/interprocess/sync/named_mutex.hpp>
+#include <boost/exception/exception.hpp>
 #include <boost/uuid.hpp>
 
 #include "BigMatrix.h"
@@ -48,7 +49,7 @@ std::string ttos(T i)
 }
 
 template<typename T>
-void* CreateLocalSepColMatrix(long nrow, long ncol)
+void* CreateLocalSepColMatrix(index_type nrow, index_type ncol)
 {
   T** pMat = new T*[ncol];
   int i;
@@ -60,13 +61,13 @@ void* CreateLocalSepColMatrix(long nrow, long ncol)
 }
 
 template<typename T>
-void* CreateSepColMatrix(long nrow, long ncol)
+void* CreateSepColMatrix(index_type nrow, index_type ncol)
 {
   return reinterpret_cast<void*>(new T[nrow*ncol]);
 }
 
-bool LocalBigMatrix::create( const long numRow, const long numCol, 
-  const long numEbytes, const int matrixType, const bool sepCols)
+bool LocalBigMatrix::create( const index_type numRow, const index_type numCol, 
+  const index_type numEbytes, const int matrixType, const bool sepCols)
 {
   _nrow = numRow;
 	_matrixRows = _nrow;
@@ -124,9 +125,9 @@ bool LocalBigMatrix::create( const long numRow, const long numCol,
 }
 
 template<typename T>
-void DestroyLocalSepColMatrix( T** matrix, const long ncol)
+void DestroyLocalSepColMatrix( T** matrix, const index_type ncol)
 {
-  long i;
+  index_type i;
   for (i=0; i < ncol; ++i)
   {
     delete [] matrix[i];
@@ -186,7 +187,7 @@ bool SharedBigMatrix::create_uuid()
 bool SharedBigMatrix::read_lock( Columns &cols )
 {
   _mutexLock.read_write_lock();
-  unsigned long i;
+  Columns::size_type i;
   for (i=0; i < cols.size(); ++i)
   {
     _mutexPtrs[ cols[i] ]->read_lock();
@@ -198,7 +199,7 @@ bool SharedBigMatrix::read_lock( Columns &cols )
 bool SharedBigMatrix::read_write_lock( Columns &cols )
 {
   _mutexLock.read_write_lock();
-  unsigned long i;
+  Columns::size_type i;
   for (i=0; i < cols.size(); ++i)
   {
     _mutexPtrs[ cols[i] ]->read_write_lock();
@@ -210,7 +211,7 @@ bool SharedBigMatrix::read_write_lock( Columns &cols )
 bool SharedBigMatrix::unlock( Columns &cols )
 {
 //  _mutexLock.read_write_lock();
-  unsigned long i;
+  Columns::size_type i;
   for (i=0; i < cols.size(); ++i)
   {
     _mutexPtrs[ cols[i] ]->unlock();
@@ -221,11 +222,11 @@ bool SharedBigMatrix::unlock( Columns &cols )
 
 template<typename T>
 void* CreateSharedSepMatrix( const std::string &sharedName, 
-  MappedRegionPtrs &dataRegionPtrs, const long nrow, 
-  const long ncol )
+  MappedRegionPtrs &dataRegionPtrs, const index_type nrow, 
+  const index_type ncol )
 {
   T** pMat = new T*[ncol];
-  long i;
+  index_type i;
   dataRegionPtrs.resize(ncol);
   for (i=0; i < ncol; ++i)
   {
@@ -241,7 +242,7 @@ void* CreateSharedSepMatrix( const std::string &sharedName,
     }
     catch (interprocess_exception &ex)
     {
-      long j;
+      index_type j;
       for (j=0; j < i; ++j)
       {
         shared_memory_object::remove( (sharedName+"_column_"+ttos(j)).c_str());
@@ -254,9 +255,9 @@ void* CreateSharedSepMatrix( const std::string &sharedName,
 }
 
 bool CreateMutexes( MutexPtrs &mutexPtrs, const std::string &sharedName,
-  const unsigned long ncol )
+  const index_type ncol )
 {
-  unsigned long i;
+  index_type i;
   mutexPtrs.resize(ncol);
   for (i=0; i < ncol; ++i)
   {
@@ -268,7 +269,7 @@ bool CreateMutexes( MutexPtrs &mutexPtrs, const std::string &sharedName,
 
 template<typename T>
 void* CreateSharedMatrix( const std::string &sharedName, 
-  MappedRegionPtrs &dataRegionPtrs, const long nrow, const long ncol, const long nebytes)
+  MappedRegionPtrs &dataRegionPtrs, const index_type nrow, const index_type ncol, const index_type nebytes)
 {
   try
   {
@@ -285,8 +286,8 @@ void* CreateSharedMatrix( const std::string &sharedName,
   return dataRegionPtrs[0]->get_address();
 }
 
-bool SharedMemoryBigMatrix::create( const long numRow, 
-  const long numCol, const long numEbytes, const int matrixType, 
+bool SharedMemoryBigMatrix::create( const index_type numRow, 
+  const index_type numCol, const index_type numEbytes, const int matrixType, 
   const bool sepCols )
 {
   if (!create_uuid())
@@ -369,11 +370,11 @@ bool SharedMemoryBigMatrix::create( const long numRow,
 
 template<typename T>
 void* ConnectSharedSepMatrix( const std::string &uuid, 
-  MappedRegionPtrs &dataRegionPtrs, const long nrow, 
-  const long ncol )
+  MappedRegionPtrs &dataRegionPtrs, const index_type nrow, 
+  const index_type ncol )
 {
   T** pMat = new T*[ncol];
-  unsigned long i;
+  index_type i;
   for (i=0; i < ncol; ++i)
   {
 		try
@@ -397,8 +398,8 @@ void* ConnectSharedSepMatrix( const std::string &uuid,
 
 template<typename T>
 void* ConnectSharedMatrix( const std::string &sharedName, 
-  MappedRegionPtrs &dataRegionPtrs, const long nrow, 
-  const long ncol)
+  MappedRegionPtrs &dataRegionPtrs, const index_type nrow, 
+  const index_type ncol)
 {
 	try 
 	{
@@ -415,7 +416,7 @@ void* ConnectSharedMatrix( const std::string &sharedName,
 }
 
 bool SharedMemoryBigMatrix::connect( const std::string &uuid, 
-	const long numRow, const long numCol, const long numEbytes, 
+	const index_type numRow, const index_type numCol, const index_type numEbytes, 
 	const int matrixType, const bool sepCols )
 {
 	try
@@ -494,9 +495,9 @@ bool SharedMemoryBigMatrix::connect( const std::string &uuid,
 	}
 }
 
-void DestroySharedSepMatrix( const std::string &uuid, const unsigned long ncol )
+void DestroySharedSepMatrix( const std::string &uuid, const index_type ncol )
 {
-  unsigned long i;
+  index_type i;
   for (i=0; i < ncol; ++i)
   {
 		try
@@ -536,8 +537,8 @@ bool SharedMemoryBigMatrix::destroy()
   	}
   	if (_sharedCounter.get() == 1)
   	{
-    	long i;
-    	for (i=0; i < static_cast<long>(_mutexPtrs.size()); ++i)
+    	index_type i;
+    	for (i=0; i < static_cast<index_type>(_mutexPtrs.size()); ++i)
     	{
       	_mutexPtrs[i]->destroy();
     	}
@@ -557,10 +558,10 @@ bool SharedMemoryBigMatrix::destroy()
 template<typename T>
 void* ConnectFileBackedSepMatrix( const std::string &sharedName,
   const std::string &filePath, MappedRegionPtrs &dataRegionPtrs, 
-  const long nrow, const long ncol)
+  const index_type nrow, const index_type ncol)
 {
   T** pMat = new T*[ncol];
-  long i;
+  index_type i;
   dataRegionPtrs.resize(ncol);
   for (i=0; i < ncol; ++i)
   {
@@ -585,9 +586,9 @@ void* ConnectFileBackedSepMatrix( const std::string &sharedName,
 template<typename T>
 void* CreateFileBackedSepMatrix( const std::string &fileName, 
   const std::string &filePath, MappedRegionPtrs &dataRegionPtrs, 
-  const long nrow, const long ncol )
+  const index_type nrow, const index_type ncol )
 {
-  long i;
+  index_type i;
   for (i=0; i < ncol; ++i)
   {
     std::string columnName = filePath + fileName + "_column_" + ttos(i);
@@ -610,7 +611,7 @@ void* CreateFileBackedSepMatrix( const std::string &fileName,
 template<typename T>
 void* ConnectFileBackedMatrix( const std::string &fileName, 
   const std::string &filePath, MappedRegionPtrs &dataRegionPtrs, 
-  const long nrow, const long ncol)
+  const index_type nrow, const index_type ncol)
 {
   try
   {
@@ -629,7 +630,7 @@ void* ConnectFileBackedMatrix( const std::string &fileName,
 template<typename T>
 void* CreateFileBackedMatrix( const std::string &fileName, 
   const std::string &filePath, MappedRegionPtrs &dataRegionPtrs, 
-  const long nrow, const long ncol, const long nebytes)
+  const index_type nrow, const index_type ncol, const index_type nebytes)
 {
   // Create the file.
   std::filebuf fbuf;
@@ -648,8 +649,8 @@ void* CreateFileBackedMatrix( const std::string &fileName,
 }
 
 bool FileBackedBigMatrix::create( const std::string &fileName, 
-  const std::string &filePath, const long numRow, const long numCol, 
-  const long numEbytes, const int matrixType, const bool sepCols, bool preserve )
+  const std::string &filePath, const index_type numRow, const index_type numCol, 
+  const index_type numEbytes, const int matrixType, const bool sepCols, bool preserve )
 {
   if (!create_uuid())
 	{
@@ -730,8 +731,8 @@ bool FileBackedBigMatrix::create( const std::string &fileName,
 }
 
 bool FileBackedBigMatrix::connect( const std::string &sharedName, 
-  const std::string &fileName, const std::string &filePath, const long numRow, 
-  const long numCol, const long numEbytes, const int matrixType, 
+  const std::string &fileName, const std::string &filePath, const index_type numRow, 
+  const index_type numCol, const index_type numEbytes, const int matrixType, 
   const bool sepCols, const bool preserve )
 {
 	try
@@ -811,9 +812,9 @@ bool FileBackedBigMatrix::connect( const std::string &sharedName,
 }
 
 void DestroyFileBackedSepMatrix( const std::string &sharedName, 
-  const unsigned long ncol, const std::string &fileName, const bool preserve )
+  const index_type ncol, const std::string &fileName, const bool preserve )
 {
-  unsigned long i;
+  index_type i;
   for (i=0; i < ncol; ++i)
   {
 		try
@@ -878,8 +879,8 @@ bool FileBackedBigMatrix::destroy()
         // In all cases, do the following:
   	if (_sharedCounter.get() == 1)
   	{
-      long i;
-      for (i=0; i < static_cast<long>(_mutexPtrs.size()); ++i)
+      index_type i;
+      for (i=0; i < static_cast<index_type>(_mutexPtrs.size()); ++i)
       {
      	  _mutexPtrs[i]->destroy();
       }
@@ -902,96 +903,3 @@ bool FileBackedBigMatrix::destroy()
 		return false;
 	}
 }
-
-// Add and remove columns
-/*
-template<typename T>
-void RemAndCopy(BigMatrix &bigMat, long remCol, long newNumCol)
-{
-  T** oldMat = reinterpret_cast<T**>(bigMat.matrix());
-  T** newMat = new T*[newNumCol];
-  delete [] (oldMat[remCol]);
-  long i,j;
-  for (i=0,j=0; i < newNumCol+1; ++i)
-  {
-    if (i != remCol)
-      newMat[j++] = oldMat[i];
-  }
-  delete [] oldMat;
-  bigMat.matrix() = reinterpret_cast<void*>(newMat);
-}
-
-bool BigMatrix::remove_column(long col)
-{
-  if (!_pColNames->empty())
-    _pColNames->erase(_pColNames->begin()+col);
-  --_ncol;
-  switch (_matType)
-  {
-    case 1:
-      RemAndCopy<char>(*this, col, _ncol);
-      break;
-    case 2:
-      RemAndCopy<short>(*this, col, _ncol);
-      break;
-    case 4:
-      RemAndCopy<int>(*this, col, _ncol);
-      break;
-    case 8:
-      RemAndCopy<double>(*this, col, _ncol);
-      break;
-  }
-  return true;
-}
-
-template<typename T>
-void AddAndCopy(BigMatrix &bigMat, long pos, long newNumCol, long nrow, 
-  double init)
-{
-  T** oldMat = reinterpret_cast<T**>(bigMat.matrix());
-  T* addRow = new T[nrow];
-  T** newMat = new T*[newNumCol];
-  long i,j;
-
-  for (i=0; i < nrow; ++i)
-    addRow[i] = (T)init;
-
-  bool added=false;
-  for (i=0,j=0; i < newNumCol-1; ++i)
-  {
-    if (j==pos)
-    {
-      newMat[j++] = addRow;
-      added=true;
-    }
-    newMat[j++] = oldMat[i];
-  }
-  if (!added)
-    newMat[j] = addRow;
-  delete [] reinterpret_cast<T**>(bigMat.matrix());
-  bigMat.matrix() = reinterpret_cast<void*>(newMat);
-}
-
-bool BigMatrix::insert_column(long pos, double init, string name)
-{
-  if (!_pColNames->empty())
-    _pColNames->insert( _pColNames->begin()+pos, name);
-  ++_ncol;
-  switch (_matType)
-  {
-    case 1:
-      AddAndCopy<char>(*this, pos, _ncol, _nrow, init);
-      break;
-    case 2:
-      AddAndCopy<short>(*this, pos, _ncol, _nrow, init);
-      break;
-    case 4:
-      AddAndCopy<int>(*this, pos, _ncol, _nrow, init);
-      break;
-    case 8:
-      AddAndCopy<double>(*this, pos, _ncol, _nrow, init);
-      break;
-  }
-  return true;
-}
-*/
