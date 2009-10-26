@@ -699,8 +699,8 @@ SEXP ReadMatrix(SEXP fileName, BigMatrix *pMat,
   BMAccessorType mat(*pMat);
   SEXP ret = PROTECT(NEW_LOGICAL(1));
   LOGICAL_DATA(ret)[0] = (Rboolean)0;
-  int fl = INTEGER_VALUE(firstLine);
-  int nl = INTEGER_VALUE(numLines);
+  index_type fl = static_cast<index_type>(NUMERIC_VALUE(firstLine));
+  index_type nl = static_cast<index_type>(NUMERIC_VALUE(numLines));
   string sep(CHAR(STRING_ELT(separator,0)));
   index_type i=0,j;
   bool rowSizeReserved = false;
@@ -719,6 +719,7 @@ SEXP ReadMatrix(SEXP fileName, BigMatrix *pMat,
     std::getline(file, lc);
   }
 	Names rn;
+  index_type offset = static_cast<index_type>(LOGICAL_VALUE(hasRowNames));
   for (i=0; i < nl; ++i)
   {
     // getline may be slow
@@ -732,7 +733,6 @@ SEXP ReadMatrix(SEXP fileName, BigMatrix *pMat,
       if (last > lc.size())
         last = lc.size();
       element = lc.substr(first, last-first);
-      // Skip the row name.
 			if (LOGICAL_VALUE(hasRowNames) && LOGICAL_VALUE(useRowNames) && 0==j)
 			{
         if (!rowSizeReserved)
@@ -740,35 +740,61 @@ SEXP ReadMatrix(SEXP fileName, BigMatrix *pMat,
           rn.reserve(nl);
           rowSizeReserved = true;
         }
-        rn.push_back(element.substr(1, element.size()-2));
+        size_t pos;
+        while ( (pos = element.find("\"", 0)) != string::npos )
+        {
+          element = element.replace(pos, 1, "");
+        }
+        while ( (pos = element.find("'", 0)) != string::npos )
+        {
+          element = element.replace(pos, 1, "");
+        }
+        rn.push_back(element);
 			}
 			else
       {
-				index_type offset= LOGICAL_VALUE(hasRowNames) && LOGICAL_VALUE(useRowNames) ?
-					1 : 0;
-        if (element == "NA")
-        {
-          mat[j-offset][i] = static_cast<T>(C_NA);
-        }
-        else if (element == "inf")
-        {
-          mat[j-offset][i] = static_cast<T>(posInf);
-        }
-        else if (element == "-inf")
-        {
-          mat[j-offset][i] = static_cast<T>(negInf);
-        }
-        else if (element == "NaN")
-        {
-          mat[j-offset][i] = static_cast<T>(notANumber);
+        if (j-offset < pMat->ncol())
+        { 
+          if (element == "NA")
+          {
+            mat[j-offset][i] = static_cast<T>(C_NA);
+          }
+          else if (element == "inf")
+          {
+            mat[j-offset][i] = static_cast<T>(posInf);
+          }
+          else if (element == "-inf")
+          {
+            mat[j-offset][i] = static_cast<T>(negInf);
+          }
+          else if (element == "NaN")
+          {
+            mat[j-offset][i] = static_cast<T>(notANumber);
+          }
+          else if (element =="")
+          {
+            mat[j-offset][i] = static_cast<T>(C_NA);
+          }
+          else
+          {
+            mat[j-offset][i] = static_cast<T>(atof(element.c_str()));
+          }
         }
         else
         {
-          mat[j-offset][i] = static_cast<T>(atof(element.c_str()));
+          warning( (string("Incorrect number of entries in row ")+ttos(j)).c_str());
         }
       }
       first = last+1;
       ++j;
+    }
+    if (j-offset < pMat->ncol())
+    {
+      warning( (string("Incorrect number of entries in row ")+ttos(j)).c_str());
+      while (j-offset < pMat->ncol())
+      {
+        mat[j++ - offset][i] = static_cast<T>(C_NA);
+      }
     }
   }
 	pMat->row_names( rn );

@@ -913,115 +913,105 @@ hash.mat <- function(x, col)
                       ncol=2, byrow=TRUE))
 }
 
-read.big.matrix <- function(fileName, sep=',', header=FALSE, row.names=NULL, 
-                            col.names=NULL, type=NA, skip=0, separated=FALSE,
+read.big.matrix <- function(fileName, sep=',', header=FALSE, col.names=NULL, 
+                            row.names=NULL, has.row.names=FALSE, ignore.row.names=FALSE,
+                            type=NA, skip=0, separated=FALSE,
                             shared=FALSE, backingfile=NULL, backingpath=NULL,
-                            descriptorfile=NULL, preserve=TRUE, extraCols=NULL) 
+                            descriptorfile=NULL, extraCols=NULL) 
 { stop("Error: You must specify a file name.") }
 
 setMethod('read.big.matrix', signature(fileName='character'),
-  function(fileName, sep=',', header=FALSE, row.names=NULL, col.names=NULL,
+  function(fileName, sep=',', header=FALSE, col.names=NULL,
+           row.names=NULL, has.row.names=FALSE, ignore.row.names=FALSE,
            type=NA, skip=0, separated=FALSE, shared=FALSE, 
            backingfile=NULL, backingpath=NULL, descriptorfile=NULL,
-           preserve=TRUE, extraCols=NULL)
+           extraCols=NULL)
   {
+    if (is.logical(col.names) | is.logical(row.names))
+      stop("row.names and col.names, if used, must only be vectors of names (not logicals).")
     if ( (header | is.character(col.names)) & is.numeric(extraCols) )
       stop(paste("When column names are specified, extraCols must be the names",
                  "of the extra columns."))
     if (!header & is.null(col.names) & is.character(extraCols))
-      stop(paste("No header and no column names specified, so extraCols",
+      stop(paste("No header and no column names were specified, so extraCols",
            "must be an integer."))
     headerOffset <- as.numeric(header)
     colNames <- NULL
     if (header) {
-      colNames = unlist(strsplit(
+      colNames <- unlist(strsplit(
         scan(fileName, what='character', skip=skip, nlines=1, sep="\n", 
              quiet=TRUE), split=sep))
+      colNames <- gsub("\"", "", colNames, perl=TRUE)
+      colNames <- gsub("\'", "", colNames, perl=TRUE)
+      if (is.na(colNames[1]) | colNames[1]=="") colNames <- colNames[-1]
       if (is.character(col.names)) {
         warning("Using supplied column names and skipping the header row.\n")
         colNames <- col.names
       } else {
         if (!is.null(col.names))
-          stop("You need to decide between column names and a header.\n")
+          stop("Invalid header/col.names usage (col.names must be a vector of names if used).\n")
       }
     } else {
       if (is.character(col.names)) colNames <- col.names
     }
+
     # Get the first line of data
     firstLineVals <- unlist(strsplit(
       scan(fileName, what='character', skip=(skip+headerOffset), 
            nlines=1, sep="\n", quiet=TRUE), split=sep))
+    firstLineVals[firstLineVals=="NA"] <- NA
 
-    # See if there are row names (a row name always has a double quote)
+    # At this point, we assume there are length(colNames) columns of data if
+    # available, otherwise, figure it out.
+    if (!is.null(colNames)) numCols <- length(colNames)
+    else {
+      numCols <- length(firstLineVals) - has.row.names 
+    }
+
+    if (length(firstLineVals) - has.row.names != numCols)
+      stop("Dimension mismatch between header row and first data row.\n")
+
     rowNames <- NULL
-    userowNames <- FALSE
-    hasQuoteInFirstLine <- grep( '"', firstLineVals )
-    hasRowNames <- (length(hasQuoteInFirstLine) > 0 && hasQuoteInFirstLine > 0)
-    if (hasRowNames) userowNames <- TRUE
-
-    if (length(colNames) == length(firstLineVals)) {
-      # No row names, may or may not be column names, but we don't care
-      # and nothing more needs to be done at this point.
-    }
-    if (!is.null(colNames) && (length(colNames)==length(firstLineVals))) {
-      # Column and row names both exist
-      if (is.logical(row.names) && !row.names) 
-        stop("Error: row names seem to exist in this file.\n")
-      if (is.logical(row.names) && row.names) {
-        firstLineVals <- firstLineVals[-1]
-        userowNames <- TRUE
-      }
+    if (!is.null(row.names)) {
       if (is.character(row.names)) {
-        warning("Using supplied row names instead of those in the file.\n")
         rowNames <- row.names
-        userowNames <- FALSE
-      }
-    } 
-    if (is.null(colNames) && is.logical(row.names)) {
-      if (row.names) {
-        firstLineVals <- firstLineVals[-1]
-        userowNames <- TRUE
-      }
+        ignore.row.names <- TRUE
+      } else { stop("Invalid row.names (must be a vector of names if used).\n") }
     }
 
-    numCols <- length(firstLineVals) - as.integer(hasRowNames)
     if (is.na(type)) {
-      warning(paste("big.matrix type was not specified, going by first line,",
-                    "noting that a choice will be made between double and",
-                    "integer only (not short or char)."))
       type <- 'double'
+      if (has.row.names) firstLineVals <- firstLineVals[-1]
       if (sum(na.omit(as.integer(firstLineVals)) ==
               na.omit(as.double(firstLineVals))) ==
           numCols ) 
         type <- 'integer'
+      warning(paste("Because type was not specified, we chose", type,
+                    "based on the first line of data."))
     }
 
     lineCount <- .Call("CCountLines", fileName) - skip - headerOffset
     numRows <- lineCount
     createCols <- numCols
-    if (is.numeric(extraCols)) createCols = createCols + extraCols
+    if (is.numeric(extraCols)) createCols <- createCols + extraCols
     if (is.character(extraCols)) {
       createCols <- createCols + length(extraCols)
       colNames <- c(colNames, extraCols)
     }
-    if (shared | !is.null(backingfile)) {
-      bigMat <- shared.big.matrix(nrow=numRows, ncol=createCols, type=type,
-                                  dimnames=list(rowNames, colNames), init=NULL, 
-                                  separated=separated, backingfile=backingfile,
-                                  backingpath=backingpath,
-                                  descriptorfile=descriptorfile,
-                                  preserve=preserve)
-    } else {
-      bigMat <- big.matrix(nrow=numRows, ncol=createCols, type=type, 
-                           dimnames=list(rowNames, colNames), init=NULL)
-    } 
-    ############################################################
-    # if userowNames == NULL, then there aren't any in the file.
-    # if userowNames == TRUE, then they exist: use them!
-    # if userowNames == FALSE, then they exist, but you ignore them.
+
+    bigMat <- big.matrix(nrow=numRows, ncol=createCols, type=type,
+                         dimnames=list(rowNames, colNames), init=NULL, 
+                         separated=separated, backingfile=backingfile,
+                         backingpath=backingpath,
+                         descriptorfile=descriptorfile)
+
+    # has.row.names indicates whether or not there are row names;
+    # we take ignore.row.names from the user, but pass (essentially)
+    # use.row.names (which is !ignore.row.names) to C:
     .Call('ReadMatrix', fileName, bigMat@address, 
-          as.integer(skip+headerOffset), as.integer(numRows), 
-          as.integer(numCols), sep, hasRowNames, userowNames)
+          as.integer(skip+headerOffset), as.double(numRows), 
+          as.double(numCols), as.character(sep), as.logical(has.row.names),
+          as.logical(!ignore.row.names))
 
     return(bigMat)
   })
