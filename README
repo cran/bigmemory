@@ -1,0 +1,18 @@
+1. Removed boost/interprocess/containers/detail since it was empty.
+2. os_file_functions.hpp: Changed line 125 from
+
+  if(size > filesize){
+
+  to 
+
+  if(size > static_cast<std::size_t>(filesize)){
+
+  to get rid of the compiler warning.
+
+3. seed_rng.hpp: Changed line 150 from
+
+  std::fread( buffer, 1, 20, random_ );
+ 
+  to 
+
+  size_t temp = std::fread( buffer, 1, 20, random_ );

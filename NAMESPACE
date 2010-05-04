@@ -1,8 +1,32 @@
 import(methods)
 importFrom(utils, head, tail)
-exportClasses(big.matrix,rw.mutex)
-export(big.matrix, as.big.matrix, is.big.matrix, is.separated, is.filebacked, shared.big.matrix, filebacked.big.matrix, is.shared, attach.big.matrix, rw.mutex, attach.rw.mutex, rlock, rwlock, unlock, describe, biglm.big.matrix, bigglm.big.matrix, hash.mat, deepcopy, read.big.matrix, write.big.matrix, colsd, colvar, mwhich, colmin, colmax, colrange, colsum, colprod, colmean, binit, colna)
-exportMethods("[","[<-", dimnames, "dimnames<-", mean, min, max, range, prod, sum, nrow, ncol, summary, print, head, tail, typeof, nebytes, backingpath)
 
-useDynLib(bigmemory) # Was .so
+exportClasses(big.matrix, big.matrix.descriptor)
+
+export(big.matrix,
+       filebacked.big.matrix,
+       attach.big.matrix,
+       sub.big.matrix,
+       deepcopy, morder, mpermute, is.nil)
+
+exportMethods("[", "[<-",
+              dimnames,
+              length,
+              nrow, ncol,
+              print,
+              head, tail,
+              typeof,
+              dim,
+              is.big.matrix, as.big.matrix, as.matrix,
+              describe,
+              attach.resource,
+              mwhich,
+              read.big.matrix, write.big.matrix,
+              is.separated,
+              is.filebacked,
+              is.sub.big.matrix,
+              flush,
+              is.shared)
+
+useDynLib(bigmemory)
 

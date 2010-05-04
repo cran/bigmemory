@@ -1,51 +1,34 @@
-# /*
-#  *  bigmemory: an R package for managing massive matrices using C,
-#  *  with support for shared memory.
-#  *
-#  *  Copyright (C) 2008 John W. Emerson and Michael J. Kane
-#  *
-#  *  This file is part of bigmemory.
-#  *
-#  *  bigmemory is free software; you can redistribute it and/or modify
-#  *  it under the terms of the GNU Lesser General Public License as published
-#  *  by the Free Software Foundation; either version 3 of the License, or
-#  *  (at your option) any later version.
-#  *
-#  *  This program is distributed in the hope that it will be useful,
-#  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  *  GNU Lesser General Public License for more details.
-#  *
-#  *  You should have received a copy of the GNU Lesser General Public License
-#  *  along with this program; if not, a copy is available at
-#  *  http://www.r-project.org/Licenses/
-#  */
-
-# ###########
-# FILE: zzz.R
-#
-# We make use of two global options, here: rlock.enabled is used for
-# subtle reasons, having to do most likely with an assignment having
-# a nested mwhich, such as
-#
-# x[mwhich(...),] <- something
-#
-# Here, a write lock is obtained, but then which.bm will try to get
-# a read lock (and fail).  We use the rlock.enabled to avoid this conflict. 
-# There are probably other similar examples.
 
 .onLoad <- function(libname, pkgname) {
-    library.dynam("bigmemory", pkgname, libname);
-    options(rlock.enabled=TRUE)
-    options(bigmemory.print.warning=TRUE)
-    options(bigmemory.typecast.warning=TRUE)
+
+  isNamespaceLoaded <- function(name)
+  { !is.null(.Internal(getRegisteredNamespace(as.name(name)))) }
+  
+  if (!isNamespaceLoaded('synchronicity')) {
+      setGeneric('describe', function(x) standardGeneric('describe'))
+  }
+
+  setMethod('describe', signature(x='big.matrix'),
+    function(x)
+    {
+      return(new('big.matrix.descriptor', description=DescribeBigMatrix(x)))
+    })
+
+
+  library.dynam("bigmemory", pkgname, libname)
+  options(bigmemory.print.warning=TRUE)
+  options(bigmemory.typecast.warning=TRUE)
+  options(bigmemory.allow.dimnames=FALSE)
+  options(bigmemory.default.type="double")
+  packageStartupMessage("\nbigmemory >= 4.0 is a major revision since 3.1.2; please see package\nbiganalytics and http://www.bigmemory.org for more information.\n")
 }
 
-#.noGenerics <- TRUE
+#.noGenerics <- TRUE           # This was a problem, not used.
 
 .onUnload <- function(libpath) {
     library.dynam.unload("bigmemory", libpath);
-    options(rlock.enabled=NULL)
     options(bigmemory.print.warning=NULL)
     options(bigmemory.typecast.warning=NULL)
+    options(bigmemory.allow.dimnames=NULL)
+    options(bigmemory.default.type=NULL)
 }

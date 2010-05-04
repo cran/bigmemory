@@ -8,19 +8,20 @@ suitably-formatted ASCII file, or
 write the contents of a \code{\link{big.matrix}} to a file.
 }
 \usage{
-write.big.matrix(x, fileName = NA, row.names = FALSE,
+write.big.matrix(x, filename, row.names = FALSE,
                  col.names = FALSE, sep=',')
-read.big.matrix(fileName, sep = ',', header = FALSE,
-                col.names = NULL, row.names = NULL, has.row.names=FALSE,
-                ignore.row.names=FALSE, type = NA,
-                skip = 0, separated = FALSE, shared = FALSE,
+read.big.matrix(filename, sep = ',', header = FALSE,
+                col.names = NULL, row.names = NULL,
+                has.row.names=FALSE, ignore.row.names=FALSE,
+                type = NA, skip = 0, separated = FALSE,
                 backingfile = NULL, backingpath = NULL,
-                descriptorfile = NULL, extraCols = NULL)
+                descriptorfile = NULL, extraCols = NULL,
+                shared=TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{x}{a \code{\link{big.matrix}}.}
-  \item{fileName}{the name of an input/output file.}
+  \item{filename}{the name of an input/output file.}
   \item{sep}{a field delimiter.}
   \item{header}{if \code{TRUE}, the first line (after a possible skip) should contain column names.}
   \item{col.names}{a vector of names, use them even if column names exist in the file.}
@@ -30,11 +31,12 @@ read.big.matrix(fileName, sep = ',', header = FALSE,
   \item{type}{preferably specified, \code{"integer"} for example.}
   \item{skip}{number of lines to skip at the head of the file.}
   \item{separated}{use separated column organization of the data instead of column-major organization.}
-  \item{shared}{if \code{TRUE}, load the object into shared memory.}
   \item{backingfile}{the root name for the file(s) for the cache of \code{x}.}
   \item{backingpath}{the path to the directory containing the file backing cache.}
   \item{descriptorfile}{the file to be used for the description of the filebacked matrix.}
   \item{extraCols}{the optional number of extra columns to be appended to the matrix for future use.}
+  \item{shared}{if \code{TRUE}, the resulting \code{big.matrix} can be
+shared across processes.}
 }
 \details{
 Files must contain only one atomic type
@@ -45,18 +47,28 @@ should be helpful in obtaining the desired behavior.
 When reading from a file, if \code{type} is not specified we try to
 make a reasonable guess for you without
 making any guarantees at this point. 
-Unless you have really large integer values, we strongly recommend
+Unless you have really large integer values, we recommend
 you consider \code{"short"}.  If you have something that is essentially
 categorical, you might even be able use \code{"char"}, with huge memory
-savings in large data sets.
+savings for large data sets.
+
+Any non-numeric entry will be ignored and replaced with \code{NA},
+so reading something that traditionally would be a \code{data.frame}
+won't cause an error.  A warning is issued.
+
+Wishlist: we'd like to provide an option to ignore specified columns while
+doing reads.
+Or perhaps to specify columns targeted for factor or character conversion
+to numeric values.  Would you use such features?  Email us and let us know!
 }
 \value{
 a \code{\link{big.matrix}} object is returned by \code{read.big.matrix}, while
-\code{write.big.matrix} creates an output file in the present working directory.
+\code{write.big.matrix} creates an output file (a path could be part of \code{filename}).
 }
-\author{John W. Emerson and Michael J. Kane }
+\author{John W. Emerson and Michael J. Kane <bigmemoryauthors@gmail.com> }
 \seealso{\code{\link{big.matrix}}}
 \examples{
+
 # Without specifying the type, this big.matrix x will hold integers.
 x <- as.big.matrix(matrix(1:10, 5, 2))
 x[2,2] <- NA
