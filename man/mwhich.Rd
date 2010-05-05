@@ -3,7 +3,7 @@
 \title{Expanded ``which''-like functionality.}
 \description{
 Implements \code{\link{which}}-like functionality for a \code{\link{big.matrix}},
-with additional options for efficient comparisons executed in C++ rather than R;
+with additional options for efficient comparisons (executed in \acronym{C++});
 also works for regular numeric matrices without the memory overhead.
 }
 \usage{
@@ -17,11 +17,11 @@ mwhich(x, cols, vals, comps, op = 'AND')
   \item{op}{the comparison operator for combining the results of the individual tests, either \code{'AND'} or \code{'OR'}.}
 }
 \details{
-To improve performance and avoid the creation of massive vectors in R when
+To improve performance and avoid the creation of massive temporary vectors in \R when
 doing comparisons, \code{mwhich()} efficiently executes column-by-column comparisons
 of values to the specified values or ranges, and then returns the row indices satisfying
-the comparison using the \code{op} operator.  More advanced comparisons
-are then possible (and memory-efficient) in R by doing set operations
+the comparison specified by the \code{op} operator.  More advanced comparisons
+are then possible (and memory-efficient) in \R by doing set operations
 (\code{\link{union}} and \code{\link{intersect}}, for example) on the
 results of multiple \code{mwhich()} calls.
 
@@ -29,17 +29,20 @@ Note that \code{NA} is a valid argument in conjunction with \code{'eq'} or
 \code{'neq'}, replacing traditional \code{is.na()} calls.
 And both \code{-Inf} and \code{Inf} can be used for one-sided inequalities.
 
-If \code{mwhich()} is used with a regular numeric \code{matrix}, we access the
-data directly, so there is no memory overhead.  Interested developers might want
-to look at our code for this case, which uses a handy pointer trick in C++.
+If \code{mwhich()} is used with a regular numeric \R \code{matrix}, we access the
+data directly and thus incur no memory overhead.  Interested developers might want
+to look at our code for this case, which uses a handy pointer trick (accessor)
+in \acronym{C++}.
 }
 \value{
 a vector of row indices satisfying the criteria.
 }
-\author{John W. Emerson and Michael J. Kane}
+\author{John W. Emerson <bigmemoryauthors@gmail.com>}
 \seealso{\code{\link{big.matrix}}, \code{\link{which}}}
 \examples{
+
 x <- as.big.matrix(matrix(1:30, 10, 3))
+options(bigmemory.allow.dimnames=TRUE)
 colnames(x) <- c("A", "B", "C")
 x[,]
 x[mwhich(x, 1:2, list(c(2,3), c(11,17)),
@@ -76,5 +79,6 @@ x[1,1] <- Inf
 mwhich(x, 1, Inf, 'eq')
 mwhich(x, 1, 1, 'gt')
 mwhich(x, 1, 1, 'le')
+
 }
 \keyword{methods}

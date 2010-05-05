@@ -1,40 +1,23 @@
-/*
- *  bigmemory: an R package for managing massive matrices using C,
- *  with support for shared memory.
- *
- *  Copyright (C) 2009 John W. Emerson and Michael J. Kane
- *
- *  This file is part of bigmemory.
- *
- *  bigmemory is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU Lesser General Public License as published
- *  by the Free Software Foundation; either version 3 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU Lesser General Public License for more details.
- *
- *  You should have received a copy of the GNU Lesser General Public License
- *  along with this program; if not, a copy is available at
- *  http://www.r-project.org/Licenses/
- */
-
+#include <exception>
 #include <string>
 #include <sstream>
 #include <fstream>
 #include <fcntl.h> // to remove files
+#include <unistd.h> // to truncate files
+#include <errno.h>
 
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/file_mapping.hpp>
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/interprocess/sync/scoped_lock.hpp>
-#include <boost/interprocess/sync/named_mutex.hpp>
 #include <boost/exception/exception.hpp>
-#include <boost/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#ifndef INTERLOCKED_EXCHANGE_HACK
+  #include <boost/interprocess/sync/named_mutex.hpp>
+#endif
 
-#include "BigMatrix.h"
+#include "bigmemory/BigMatrix.h"
 
 using namespace std;
 using namespace boost;
@@ -49,175 +32,141 @@ std::string ttos(T i)
 }
 
 template<typename T>
-void* CreateLocalSepColMatrix(index_type nrow, index_type ncol)
+void* CreateLocalMatrix( const index_type &nrow, const index_type &ncol )
 {
-  T** pMat = new T*[ncol];
-  int i;
-  for (i=0; i < ncol; ++i) 
-  {
-    pMat[i] = reinterpret_cast<T*>(new char[sizeof(T)*nrow]);
-  }
-  return reinterpret_cast<void*>(pMat);
+  return new char[nrow*ncol*sizeof(T)];
 }
 
 template<typename T>
-void* CreateSepColMatrix(index_type nrow, index_type ncol)
+void* CreateLocalSepMatrix( const index_type &nrow, 
+  const index_type &ncol )
 {
-  return reinterpret_cast<void*>(new T[nrow*ncol]);
+  char **pRet = new char*[ncol];
+  index_type i;
+  try
+  {
+    for (i=0; i < ncol; ++i)
+    {
+      pRet[i] = new char[nrow*sizeof(T)];
+    }
+  }
+  catch(std::exception &e)
+  {
+    printf("%s\n", e.what());
+    while(i > 1)
+    {
+      delete [] pRet[--i];
+    }
+    delete [] pRet;
+    return NULL;
+  }
+  return reinterpret_cast<void*>(pRet);
 }
 
-bool LocalBigMatrix::create( const index_type numRow, const index_type numCol, 
-  const index_type numEbytes, const int matrixType, const bool sepCols)
+bool LocalBigMatrix::create( const index_type numRow, 
+  const index_type numCol, const int matrixType, 
+  const bool sepCols )
 {
-  _nrow = numRow;
-	_matrixRows = _nrow;
-  _ncol = numCol;
-	_matrixCols = _ncol;
-  _matType = matrixType;
-  _sepCols = sepCols;
+  try
+  {
+    _nrow = numRow;
+    _totalRows = _nrow;
+    _ncol = numCol;
+    _totalCols = _ncol;
+    _matType = matrixType;
+    _sepCols = sepCols;
+    if (_sepCols)
+    {
+      switch(_matType)
+      {
+        case 1:
+          _pdata = CreateLocalSepMatrix<char>(_nrow, _ncol);
+          break;
+        case 2:
+          _pdata = CreateLocalSepMatrix<short>(_nrow, _ncol);
+          break;
+        case 4:
+          _pdata = CreateLocalSepMatrix<int>(_nrow, _ncol);
+          break;
+        case 8:
+          _pdata = CreateLocalSepMatrix<double>(_nrow, _ncol);
+      }
+    }
+    else
+    {
+      switch(_matType)
+      {
+        case 1:
+          _pdata = CreateLocalMatrix<char>(_nrow, _ncol);
+          break;
+        case 2:
+          _pdata = CreateLocalMatrix<short>(_nrow, _ncol);
+          break;
+        case 4:
+          _pdata = CreateLocalMatrix<int>(_nrow, _ncol);
+          break;
+        case 8:
+          _pdata = CreateLocalMatrix<double>(_nrow, _ncol);
+      }
+    }
+    if (_pdata == NULL)
+    {
+      return false;
+    }
+    return true;
+  }
+  catch(std::exception &e)
+  {
+    printf("%s\n", e.what());
+    printf("%s line %d\n", __FILE__, __LINE__);
+    return false;
+  }
+}
+
+bool LocalBigMatrix::destroy()
+{
   try
   {
     if (_sepCols)
     {
-      switch(_matType)
+      char** p = reinterpret_cast<char**>(_pdata);
+      index_type i;
+      for (i=0; i < _ncol; ++i)
       {
-        case 1:
-          _pdata = CreateLocalSepColMatrix<char>(_nrow, _ncol);
-          break;
-        case 2:
-          _pdata = CreateLocalSepColMatrix<short>(_nrow, _ncol);
-          break;
-        case 4:
-          _pdata = CreateLocalSepColMatrix<int>(_nrow, _ncol);
-          break;
-        case 8:
-          _pdata = CreateLocalSepColMatrix<double>(_nrow, _ncol);
+        delete [] p[i];
       }
+      delete [] p;
     }
     else
     {
-			_nebytes = numEbytes;
-      switch(_matType)
-      {
-        case 1:
-          _pdata = reinterpret_cast<void*>(
-						new char[_nebytes+_nrow*_ncol]);
-          break;
-        case 2:
-          _pdata = reinterpret_cast<void*>(
-						new char[_nebytes+sizeof(short)*_nrow*_ncol]);
-          break;
-        case 4:
-          _pdata = reinterpret_cast<void*>(
-						new char[_nebytes+sizeof(int)*_nrow*_ncol]);
-          break;
-        case 8:
-          _pdata = reinterpret_cast<void*>(
-						new char[_nebytes+sizeof(double)*_nrow*_ncol]);
-      }
+      delete [] reinterpret_cast<char*>(_pdata);
     }
+    return true;
   }
-  catch (std::bad_alloc &ex)
+  catch(std::exception &e)
   {
+    printf("%s\n", e.what());
     return false;
-  }
-  return true;
-}
-
-template<typename T>
-void DestroyLocalSepColMatrix( T** matrix, const index_type ncol)
-{
-  index_type i;
-  for (i=0; i < ncol; ++i)
-  {
-    delete [] matrix[i];
-  }
-  delete matrix;
-
-}
-
-template<typename T>
-void DestroyLocalMatrix( T* matrix )
-{
-  delete [] matrix;
-}
-
-void LocalBigMatrix::destroy()
-{
-  if (_pdata && _matrixCols && _matrixRows)
-  {
-    if (_sepCols)
-    {
-      DestroyLocalSepColMatrix(reinterpret_cast<char**>(_pdata), _matrixCols);
-    }
-    else
-    {
-      DestroyLocalMatrix(reinterpret_cast<char*>(_pdata));
-    }
-    _pdata=NULL;
-    _nrow=0;
-		_matrixRows=0;
-    _ncol=0;
-		_matrixCols=0;
-    _nebytes=0;
   }
 }
 
 bool SharedBigMatrix::create_uuid()
 {
-	try
-	{
-  	// See http://www.boost.org/doc/libs/1_36_0/libs/random/random_demo.cpp
-  	// for documentation about seed problems with random number based uuid.
-  	named_mutex mutex(open_or_create, "SharedBigMatrix_create_uuid");
-  	mutex.lock();
-		boost::uuid id = uuid::create();
-  	_uuid = id.to_string();
-  	mutex.unlock();
-  	named_mutex::remove("SharedBigMatrix_create_uuid");
-  	return true;
-	}
-	catch(...)
-	{
-  	named_mutex::remove("SharedBigMatrix_create_uuid");
-		return false;
-	}
-}
-
-bool SharedBigMatrix::read_lock( Columns &cols )
-{
-  _mutexLock.read_write_lock();
-  Columns::size_type i;
-  for (i=0; i < cols.size(); ++i)
+  try
   {
-    _mutexPtrs[ cols[i] ]->read_lock();
+    stringstream ss;
+    boost::uuids::basic_random_generator<boost::mt19937> gen;
+    boost::uuids::uuid u = gen();
+    ss << u;
+    _uuid = ss.str();
+    return true;
   }
-  _mutexLock.unlock();
-  return true;
-}
-
-bool SharedBigMatrix::read_write_lock( Columns &cols )
-{
-  _mutexLock.read_write_lock();
-  Columns::size_type i;
-  for (i=0; i < cols.size(); ++i)
+  catch(std::exception &e)
   {
-    _mutexPtrs[ cols[i] ]->read_write_lock();
+    printf("%s\n", e.what());
+    printf("%s line %d\n", __FILE__, __LINE__);
+    return false;
   }
-  _mutexLock.unlock();
-  return true;
-}
-
-bool SharedBigMatrix::unlock( Columns &cols )
-{
-//  _mutexLock.read_write_lock();
-  Columns::size_type i;
-  for (i=0; i < cols.size(); ++i)
-  {
-    _mutexPtrs[ cols[i] ]->unlock();
-  }
-//  _mutexLock.unlock();
-  return true;
 }
 
 template<typename T>
@@ -232,7 +181,7 @@ void* CreateSharedSepMatrix( const std::string &sharedName,
   {
     try
     {
-//      shared_memory_object::remove( (sharedName+"_column_"+ttos(i)).c_str() );
+      shared_memory_object::remove( (sharedName+"_column_"+ttos(i)).c_str() );
       shared_memory_object shm(create_only, 
         (sharedName + "_column_" + ttos(i)).c_str(),
         read_write);
@@ -240,8 +189,10 @@ void* CreateSharedSepMatrix( const std::string &sharedName,
       dataRegionPtrs[i] = MappedRegionPtr( new MappedRegion(shm, read_write) );
       pMat[i] = reinterpret_cast<T*>( dataRegionPtrs[i]->get_address());
     }
-    catch (interprocess_exception &ex)
+    catch (interprocess_exception &e)
     {
+      printf("%s\n", e.what());
+      printf("%s line %d\n", __FILE__, __LINE__);
       index_type j;
       for (j=0; j < i; ++j)
       {
@@ -254,32 +205,22 @@ void* CreateSharedSepMatrix( const std::string &sharedName,
   return reinterpret_cast<void*>(pMat);
 }
 
-bool CreateMutexes( MutexPtrs &mutexPtrs, const std::string &sharedName,
-  const index_type ncol )
-{
-  index_type i;
-  mutexPtrs.resize(ncol);
-  for (i=0; i < ncol; ++i)
-  {
-    mutexPtrs[i] = MutexPtr( new BigMemoryMutex );
-    mutexPtrs[i]->init( sharedName+"_column_"+ttos(i)+"mutex" );
-  }
-  return true;
-}
-
 template<typename T>
 void* CreateSharedMatrix( const std::string &sharedName, 
-  MappedRegionPtrs &dataRegionPtrs, const index_type nrow, const index_type ncol, const index_type nebytes)
+  MappedRegionPtrs &dataRegionPtrs, const index_type nrow, const index_type ncol)
 {
   try
   {
+    // shared_memory_object::remove( (sharedName.c_str()) );
     shared_memory_object shm(create_only, sharedName.c_str(), read_write);
-    shm.truncate( nebytes + nrow*ncol*sizeof(T) );
+    shm.truncate( nrow*ncol*sizeof(T) );
     dataRegionPtrs.push_back(
       MappedRegionPtr(new MappedRegion(shm, read_write)));
   }
   catch (interprocess_exception &ex)
   {
+    printf("%s\n", ex.what());
+    printf("%s line %d\n", __FILE__, __LINE__);
     shared_memory_object::remove( (sharedName.c_str() ) );
     return NULL;
   }
@@ -287,98 +228,98 @@ void* CreateSharedMatrix( const std::string &sharedName,
 }
 
 bool SharedMemoryBigMatrix::create( const index_type numRow, 
-  const index_type numCol, const index_type numEbytes, const int matrixType, 
+  const index_type numCol, const int matrixType, 
   const bool sepCols )
 {
+  using namespace boost::interprocess;
   if (!create_uuid())
-	{
-		return false;
-	}
-	try
-	{
-  	named_mutex mutex( open_or_create, (_uuid+"_counter_mutex").c_str() );
-  	mutex.lock();
-  	_nrow = numRow;
-		_matrixRows = _nrow;
-  	_ncol = numCol;
-		_matrixCols = _ncol;
-  	_matType = matrixType;
-  	_sepCols = sepCols;
-  	_sharedName=_uuid;
-  	_sharedCounter.init(_sharedName+"_counter");
-  	if (_sepCols)
-  	{
-    	switch(_matType)
-    	{
-      	case 1:
-        	_pdata = CreateSharedSepMatrix<char>(_sharedName, _dataRegionPtrs,
-          	_nrow, _ncol);
-        	break;
-      	case 2:
-        	_pdata = CreateSharedSepMatrix<short>(_sharedName, _dataRegionPtrs, 
-          	_nrow, _ncol);
-        	break;
-      	case 4:
-        	_pdata = CreateSharedSepMatrix<int>(_sharedName, _dataRegionPtrs, 
-          	_nrow, _ncol);
-        	break;
-      	case 8:
-        	_pdata = CreateSharedSepMatrix<double>(_sharedName, _dataRegionPtrs,
-          	_nrow, _ncol);
-    	}
-  	}
-  	else
-  	{
-			_nebytes = numEbytes;
-    	switch(_matType)
-    	{
-      	case 1:
-        	_pdata = CreateSharedMatrix<char>(_sharedName, _dataRegionPtrs, 
-          	_nrow, _ncol, _nebytes);
-        	break;
-      	case 2:
-        	_pdata = CreateSharedMatrix<short>(_sharedName, _dataRegionPtrs,
-          	_nrow, _ncol, _nebytes);
-        	break;
-      	case 4:
-        	_pdata = CreateSharedMatrix<int>(_sharedName, _dataRegionPtrs,
-          	_nrow, _ncol, _nebytes);
-        	break;
-      	case 8:
-      	  _pdata = CreateSharedMatrix<double>(_sharedName, _dataRegionPtrs,
-      	    _nrow, _ncol, _nebytes);
-    	}
-  	}
-  	if (_pdata == NULL)
-  	{
-    	_sharedCounter.reset();
-    	mutex.unlock();
-    	named_mutex::remove((_sharedName+"_counter_mutex").c_str());
-    	return false;
-  	}
-  	CreateMutexes(_mutexPtrs, _sharedName, _ncol);
-  	_mutexLock.init( _sharedName+"_mutex_lock" );
-  	mutex.unlock();
-  	named_mutex::remove((_sharedName+"_counter_mutex").c_str());
-  	return true;
-	}
-	catch(...)
-	{
-		return false;
-	}
+  {
+    return false;
+  }
+  try
+  {
+    _nrow = numRow;
+    _totalRows = _nrow;
+    _ncol = numCol;
+    _totalCols = _ncol;
+    _matType = matrixType;
+    _sepCols = sepCols;
+    _sharedName=_uuid;
+#ifndef INTERLOCKED_EXCHANGE_HACK
+    // Create the associated mutex and counter;
+    named_mutex mutex(open_or_create, (_sharedName+"_counter_mutex").c_str());
+    mutex.lock();
+#endif
+    _counter.init( _sharedName+"_counter" );
+#ifndef INTERLOCKED_EXCHANGE_HACK
+    mutex.unlock();
+#endif
+    if (_sepCols)
+    {
+      switch(_matType)
+      {
+        case 1:
+          _pdata = CreateSharedSepMatrix<char>(_sharedName, _dataRegionPtrs,
+            _nrow, _ncol);
+          break;
+        case 2:
+          _pdata = CreateSharedSepMatrix<short>(_sharedName, _dataRegionPtrs, 
+            _nrow, _ncol);
+          break;
+        case 4:
+          _pdata = CreateSharedSepMatrix<int>(_sharedName, _dataRegionPtrs, 
+            _nrow, _ncol);
+          break;
+        case 8:
+          _pdata = CreateSharedSepMatrix<double>(_sharedName, _dataRegionPtrs,
+            _nrow, _ncol);
+      }
+    }
+    else
+    {
+      switch(_matType)
+      {
+        case 1:
+          _pdata = CreateSharedMatrix<char>(_sharedName, _dataRegionPtrs, 
+            _nrow, _ncol);
+          break;
+        case 2:
+          _pdata = CreateSharedMatrix<short>(_sharedName, _dataRegionPtrs,
+            _nrow, _ncol);
+          break;
+        case 4:
+          _pdata = CreateSharedMatrix<int>(_sharedName, _dataRegionPtrs,
+            _nrow, _ncol);
+          break;
+        case 8:
+          _pdata = CreateSharedMatrix<double>(_sharedName, _dataRegionPtrs,
+            _nrow, _ncol);
+      }
+    }
+    if (_pdata == NULL)
+    {
+      return false;
+    }
+    return true;
+  }
+  catch(std::exception &e)
+  {
+    printf("%s\n", e.what());
+    printf("%s line %d\n", __FILE__, __LINE__);
+    return false;
+  }
 }
 
 template<typename T>
 void* ConnectSharedSepMatrix( const std::string &uuid, 
-  MappedRegionPtrs &dataRegionPtrs, const index_type nrow, 
-  const index_type ncol )
+  MappedRegionPtrs &dataRegionPtrs, const index_type ncol )
 {
   T** pMat = new T*[ncol];
   index_type i;
   for (i=0; i < ncol; ++i)
   {
-		try
-		{
+    try
+    {
       shared_memory_object shm(open_only,
         (uuid + "_column_" + ttos(i)).c_str(),
         read_write);
@@ -386,8 +327,10 @@ void* ConnectSharedSepMatrix( const std::string &uuid,
         MappedRegionPtr(new MappedRegion(shm, read_write)));
       pMat[i] = reinterpret_cast<T*>(dataRegionPtrs[i]->get_address());
     }
-    catch (...)
+    catch (std::exception &e)
     {
+      printf("%s\n", e.what());
+      printf("%s line %d\n", __FILE__, __LINE__);
       dataRegionPtrs.resize(0);
       delete pMat;
       return NULL;
@@ -398,101 +341,103 @@ void* ConnectSharedSepMatrix( const std::string &uuid,
 
 template<typename T>
 void* ConnectSharedMatrix( const std::string &sharedName, 
-  MappedRegionPtrs &dataRegionPtrs, const index_type nrow, 
-  const index_type ncol)
+  MappedRegionPtrs &dataRegionPtrs, SharedCounter &counter)
 {
-	try 
-	{
-  	shared_memory_object shm(open_only, sharedName.c_str(), read_write);
-  	dataRegionPtrs.push_back(
+  using namespace boost::interprocess;
+  try 
+  {
+    shared_memory_object shm(open_only, sharedName.c_str(), read_write);
+    dataRegionPtrs.push_back(
       MappedRegionPtr(new MappedRegion(shm, read_write)));
-	}
-	catch(...)
-	{
-		dataRegionPtrs.resize(0);
-		return NULL;
-	}
+  }
+  catch(std::exception &e)
+  {
+    printf("%s\n", e.what());
+    printf("%s line %d\n", __FILE__, __LINE__);
+    dataRegionPtrs.resize(0);
+    return NULL;
+  }
   return reinterpret_cast<void*>(dataRegionPtrs[0]->get_address());
 }
 
 bool SharedMemoryBigMatrix::connect( const std::string &uuid, 
-	const index_type numRow, const index_type numCol, const index_type numEbytes, 
-	const int matrixType, const bool sepCols )
+  const index_type numRow, const index_type numCol, const int matrixType, 
+  const bool sepCols )
 {
-	try
-	{
-  	named_mutex mutex( open_or_create, (uuid+"_counter_mutex").c_str() );
-  	mutex.lock();
-  	_uuid=uuid;
-  	_sharedName = _uuid;
-  	_nrow = numRow;
-		_matrixRows=_nrow;
-  	_ncol = numCol;
-		_matrixCols=_ncol;
-  	_matType = matrixType;
-  	_sepCols = sepCols;
-  	_sharedCounter.init(_sharedName+"_counter");
-  	if (_sepCols)
-  	{
-    	switch(_matType)
-    	{
-// JJJ I don't think nrow is needed below.
-      	case 1:
-        	_pdata = ConnectSharedSepMatrix<char>(_sharedName, _dataRegionPtrs,
-          	_nrow, _ncol);
-        	break;
-      	case 2:
-        	_pdata = ConnectSharedSepMatrix<short>(_sharedName, _dataRegionPtrs,
-          	_nrow, _ncol);
-        	break;
-      	case 4:
-        	_pdata = ConnectSharedSepMatrix<int>(_sharedName, _dataRegionPtrs,
-          	_nrow, _ncol);
-        	break;
-      	case 8:
-        	_pdata = ConnectSharedSepMatrix<double>(_sharedName, _dataRegionPtrs,
-          	_nrow, _ncol);
-    	}
-  	}
-  	else
-  	{
-      _nebytes = numEbytes;
-    	switch(_matType)
-    	{
-// JJJ I don't think nrow and ncol are needed below.
-      	case 1:
-        	_pdata = ConnectSharedMatrix<char>(_sharedName, _dataRegionPtrs,
-          	_nrow, _ncol);
-        	break;
-      	case 2:
-        	_pdata = ConnectSharedMatrix<short>(_sharedName, _dataRegionPtrs,
-          	_nrow, _ncol);
-        	break;
-      	case 4:
-        	_pdata = ConnectSharedMatrix<int>(_sharedName, _dataRegionPtrs,
-          	_nrow, _ncol);
-        	break;
-      	case 8:
-        	_pdata = ConnectSharedMatrix<double>(_sharedName, _dataRegionPtrs,
-          	_nrow, _ncol);
-    	}
-  	}
-		if (!_pdata)
-		{
-    	mutex.unlock();
-    	named_mutex::remove((_sharedName+"_counter_mutex").c_str());
-    	return false;
-		}
-  	CreateMutexes(_mutexPtrs, _sharedName, _ncol);
-  	_mutexLock.init( _sharedName+"_mutex_lock" );
-  	mutex.unlock();
-  	named_mutex::remove((_sharedName+"_counter_mutex").c_str());
-  	return true;
-	}
-	catch(...)
-	{
-		return false;
-	}
+  using namespace boost::interprocess;
+  try
+  {
+    _uuid=uuid;
+    _sharedName = _uuid;
+    _nrow = numRow;
+    _totalRows=_nrow;
+    _ncol = numCol;
+    _totalCols=_ncol;
+    _matType = matrixType;
+    _sepCols = sepCols;
+#ifndef INTERLOCKED_EXCHANGE_HACK
+    // Attach to the associated mutex and counter;
+    named_mutex mutex(open_or_create, (_sharedName+"_counter_mutex").c_str());
+    mutex.lock();
+#endif
+    _counter.init( _sharedName+"_counter" );
+#ifndef INTERLOCKED_EXCHANGE_HACK
+    mutex.unlock();
+#endif
+    if (_sepCols)
+    {
+      switch(_matType)
+      {
+        case 1:
+          _pdata = ConnectSharedSepMatrix<char>(_sharedName, _dataRegionPtrs, 
+            _ncol);
+          break;
+        case 2:
+          _pdata = ConnectSharedSepMatrix<short>(_sharedName, _dataRegionPtrs, 
+            _ncol);
+          break;
+        case 4:
+          _pdata = ConnectSharedSepMatrix<int>(_sharedName, _dataRegionPtrs, 
+            _ncol);
+          break;
+        case 8:
+          _pdata = ConnectSharedSepMatrix<double>(_sharedName, _dataRegionPtrs, 
+            _ncol);
+      }
+    }
+    else
+    {
+      switch(_matType)
+      {
+        case 1:
+          _pdata = ConnectSharedMatrix<char>(_sharedName, _dataRegionPtrs, 
+            _counter);
+          break;
+        case 2:
+          _pdata = ConnectSharedMatrix<short>(_sharedName, _dataRegionPtrs, 
+            _counter);
+          break;
+        case 4:
+          _pdata = ConnectSharedMatrix<int>(_sharedName, _dataRegionPtrs, 
+            _counter);
+          break;
+        case 8:
+          _pdata = ConnectSharedMatrix<double>(_sharedName, _dataRegionPtrs, 
+            _counter);
+      }
+    }
+    if (!_pdata)
+    {
+      return false;
+    }
+    return true;
+  }
+  catch(std::exception &e)
+  {
+    printf("%s\n", e.what());
+    printf("%s line %d\n", __FILE__, __LINE__);
+    return false;
+  }
 }
 
 void DestroySharedSepMatrix( const std::string &uuid, const index_type ncol )
@@ -500,65 +445,78 @@ void DestroySharedSepMatrix( const std::string &uuid, const index_type ncol )
   index_type i;
   for (i=0; i < ncol; ++i)
   {
-		try
-		{
-    	shared_memory_object::remove((uuid+ "_column_" + ttos(i)).c_str());
-		}
-		catch(...)
-		{
-		}
+    try
+    {
+      shared_memory_object::remove((uuid+ "_column_" + ttos(i)).c_str());
+    }
+    catch(std::exception &e)
+    {
+      printf("%s\n", e.what());
+      printf("%s line %d\n", __FILE__, __LINE__);
+    }
   }
 }
 
 bool SharedMemoryBigMatrix::destroy()
 {
-	try
-	{
-  	named_mutex mutex( open_or_create, (_sharedName+"_counter_mutex").c_str() );
-  	mutex.lock();
-  	_dataRegionPtrs.resize(0);
-  	if (_sepCols)
-  	{
-    	if (_sharedCounter.get() == 1)
-    	{
-      	DestroySharedSepMatrix(_uuid, _matrixCols);
-    	}
-    	if (_pdata)
-    	{
+  using namespace boost::interprocess;
+#ifndef INTERLOCKED_EXCHANGE_HACK
+  named_mutex mutex(open_or_create, (_sharedName+"_counter_mutex").c_str());
+  mutex.lock();
+#endif
+  bool destroyThis = (1==_counter.get()) ? true : false;
+  try
+  {
+    _dataRegionPtrs.resize(0);
+    // If this is the last shared memory big matrix destroy it and the
+    // associated mutex.  The counter will destroy itself.
+
+    if (_sepCols)
+    {
+      if (destroyThis)
+      {
+        DestroySharedSepMatrix(_uuid, _totalCols);
+      }
+      if (_pdata)
+      {
           delete [] reinterpret_cast<char**>(_pdata);
-    	}
-  	}
-  	else
-  	{
-    	if ( _sharedCounter.get() == 1 )
-    	{
-      	shared_memory_object::remove(_uuid.c_str());
-    	}
-  	}
-  	if (_sharedCounter.get() == 1)
-  	{
-    	index_type i;
-    	for (i=0; i < static_cast<index_type>(_mutexPtrs.size()); ++i)
-    	{
-      	_mutexPtrs[i]->destroy();
-    	}
-    	_mutexLock.destroy();
-  	}
-  	_sharedCounter.reset();
-  	mutex.unlock();
-  	named_mutex::remove((_sharedName+"_counter_mutex").c_str());
-  	return true;
-	}
-	catch(...)
-	{
-		return false;
-	}
+      }
+    }
+    else
+    {
+      if (destroyThis)
+      {
+        shared_memory_object::remove(_uuid.c_str());
+      }
+    }
+#ifndef INTERLOCKED_EXCHANGE_HACK
+    mutex.unlock();
+    if (destroyThis)
+    {
+      named_mutex::remove((_sharedName+"_counter_mutex").c_str());
+    }
+#endif
+    return true;
+  }
+  catch(std::exception &e)
+  {
+    printf("%s\n", e.what());
+    printf("%s line %d\n", __FILE__, __LINE__);
+#ifndef INTERLOCKED_EXCHANGE_HACK
+    mutex.unlock();
+    if (destroyThis)
+    {
+      named_mutex::remove((_sharedName+"_counter_mutex").c_str());
+    }
+#endif
+    return false;
+  }
 }
 
 template<typename T>
 void* ConnectFileBackedSepMatrix( const std::string &sharedName,
   const std::string &filePath, MappedRegionPtrs &dataRegionPtrs, 
-  const index_type nrow, const index_type ncol)
+  const index_type ncol)
 {
   T** pMat = new T*[ncol];
   index_type i;
@@ -573,10 +531,12 @@ void* ConnectFileBackedSepMatrix( const std::string &sharedName,
       dataRegionPtrs[i] = MappedRegionPtr(new MappedRegion(mFile, read_write));
       pMat[i] = reinterpret_cast<T*>(dataRegionPtrs[i]->get_address());
     }
-    catch (...)
+    catch (std::exception &e)
     {
+      printf("%s\n", e.what());
+      printf("%s line %d\n", __FILE__, __LINE__);
       dataRegionPtrs.resize(0);
-      delete pMat;
+      delete [] pMat;
       return NULL;
     }
   }
@@ -588,6 +548,26 @@ void* CreateFileBackedSepMatrix( const std::string &fileName,
   const std::string &filePath, MappedRegionPtrs &dataRegionPtrs, 
   const index_type nrow, const index_type ncol )
 {
+#ifdef LINUX
+  index_type i;
+  for (i=0; i < ncol; ++i)
+  {
+    std::string columnName = filePath + fileName + "_column_" + ttos(i);
+    FILE *fp = fopen( columnName.c_str(), "wb");
+    if ( -1 == ftruncate( fileno(fp), nrow*sizeof(T) ) )
+    {
+      printf("Problem creating file %s.\n", columnName.c_str());
+      index_type j;
+      for (j=0; j < i; ++j)
+      {
+        columnName = filePath + fileName + "_column_" + ttos(j);
+        unlink( columnName.c_str() );
+        return NULL;
+      }
+    }
+    fclose(fp);
+  }
+#else // WINDOWS or Mac
   index_type i;
   for (i=0; i < ncol; ++i)
   {
@@ -596,310 +576,299 @@ void* CreateFileBackedSepMatrix( const std::string &fileName,
     std::filebuf fbuf;
     if (!fbuf.open( columnName.c_str(), std::ios_base::in | std::ios_base::out |
       std::ios_base::trunc | std::ios_base::binary ))
-		{
-			return NULL;
-		}
+    {
+      return NULL;
+    }
     fbuf.pubseekoff( nrow*sizeof(T), std::ios_base::beg);
     // I'm not sure if I need this next line
     fbuf.sputc(0);
     fbuf.close();
   }
-  return ConnectFileBackedSepMatrix<T>(fileName, filePath, dataRegionPtrs, 
-    nrow, ncol);
+#endif
+  return ConnectFileBackedSepMatrix<T>(fileName, filePath, dataRegionPtrs, ncol);
 }
 
 template<typename T>
 void* ConnectFileBackedMatrix( const std::string &fileName, 
-  const std::string &filePath, MappedRegionPtrs &dataRegionPtrs, 
-  const index_type nrow, const index_type ncol)
+  const std::string &filePath, MappedRegionPtrs &dataRegionPtrs)
 {
   try
   {
     file_mapping mFile((filePath+fileName).c_str(), read_write);
     dataRegionPtrs.push_back(
       MappedRegionPtr(new MappedRegion(mFile, read_write)));
-	}
-	catch (...)
+  }
+  catch (std::exception &e)
   {
-		dataRegionPtrs.resize(0);
+    printf("%s\n", e.what());
+    printf("%s line %d\n", __FILE__, __LINE__);
+    dataRegionPtrs.resize(0);
     return NULL;
   }
   return reinterpret_cast<void*>(dataRegionPtrs[0]->get_address());
 }
 
 template<typename T>
-void* CreateFileBackedMatrix( const std::string &fileName, 
+void* CreateFileBackedMatrix(const std::string &fileName, 
   const std::string &filePath, MappedRegionPtrs &dataRegionPtrs, 
-  const index_type nrow, const index_type ncol, const index_type nebytes)
+  const index_type nrow, const index_type ncol)
 {
   // Create the file.
+  std::string fullFileName = filePath+fileName;
+#ifdef LINUX
+  FILE *fp = fopen( fullFileName.c_str(), "wb");
+  if (!fp)
+  {
+    printf( "Problem creating file %s.\n", fullFileName.c_str() );
+    return NULL;
+  }  
+  if (-1 == ftruncate( fileno(fp), nrow*ncol*sizeof(T) ) )
+  {
+    printf( "Error: %s\n", strerror(errno) );
+    fclose(fp);
+    return NULL;
+  }
+  fclose(fp);
+#else // Windows or Mac
   std::filebuf fbuf;
-  if (!fbuf.open( (filePath+fileName).c_str(), 
+  if (!fbuf.open( (filePath+fileName).c_str(),
       std::ios_base::in | std::ios_base::out |
       std::ios_base::trunc | std::ios_base::binary ))
-	{
-		return NULL;
-	}
-  fbuf.pubseekoff( nebytes+nrow*ncol*sizeof(T), std::ios_base::beg);
+  {
+    return NULL;
+  }
+  fbuf.pubseekoff(nrow*ncol*sizeof(T), std::ios_base::beg);
   // I'm not sure if I need this next line
   fbuf.sputc(0);
   fbuf.close();
+#endif
   return ConnectFileBackedMatrix<T>(fileName, filePath,
-    dataRegionPtrs, nrow, ncol);
+    dataRegionPtrs);
 }
 
 bool FileBackedBigMatrix::create( const std::string &fileName, 
-  const std::string &filePath, const index_type numRow, const index_type numCol, 
-  const index_type numEbytes, const int matrixType, const bool sepCols, bool preserve )
+  const std::string &filePath, const index_type numRow, const index_type numCol,
+  const int matrixType, const bool sepCols)
 {
   if (!create_uuid())
-	{
-		return false;
-	}
-	try
-	{
-  	named_mutex 
-			mutex(open_or_create,(fileName+uuid()+"_counter_mutex").c_str());
-  	mutex.lock();
-  	_fileName = fileName;
-  	_sharedName=fileName+uuid();
-  	_sharedCounter.init(_sharedName+"_counter");
-  	_nrow = numRow;
-		_matrixRows = _nrow;
-  	_ncol = numCol;
-		_matrixCols = _ncol;
-  	_matType = matrixType;
-  	_sepCols = sepCols;
-  	_preserve = preserve;
-  	if (_sepCols)
-  	{
-    	switch(_matType)
-    	{
-      	case 1:
-        	_pdata = CreateFileBackedSepMatrix<char>(_fileName, filePath,
-          	_dataRegionPtrs, _nrow, _ncol);
-        	break;
-      	case 2:
-        	_pdata = CreateFileBackedSepMatrix<short>(_fileName, filePath,
-          	_dataRegionPtrs, _nrow, _ncol);
-        	break;
-      	case 4:
-        	_pdata = CreateFileBackedSepMatrix<int>(_fileName, filePath,
-          	_dataRegionPtrs, _nrow, _ncol);
-        	break;
-      	case 8:
-        	_pdata = CreateFileBackedSepMatrix<double>(_fileName, filePath,
-          	_dataRegionPtrs, _nrow, _ncol);
-    	}
-  	}
-  	else
-  	{
-			_nebytes = numEbytes;
-    	switch(_matType)
-    	{
-      	case 1:
-        	_pdata = CreateFileBackedMatrix<char>(_fileName, filePath,
-          	_dataRegionPtrs, _nrow, _ncol, numEbytes);
-        	break;
-      	case 2:
-        	_pdata = CreateFileBackedMatrix<short>(_fileName, filePath,
-          	_dataRegionPtrs, _nrow, _ncol, numEbytes);
-        	break;
-      	case 4:
-        	_pdata = CreateFileBackedMatrix<int>(_fileName, filePath,
-          	_dataRegionPtrs, _nrow, _ncol, numEbytes);
-        	break;
-      	case 8:
-        	_pdata = CreateFileBackedMatrix<double>(_fileName, filePath,
-          	_dataRegionPtrs, _nrow, _ncol, numEbytes);
-    	}
-  	}
-		if (!_pdata)
-		{
-			return false;
-		}
- 	 	CreateMutexes(_mutexPtrs, _sharedName, _ncol);
- 	 	_mutexLock.init( _sharedName+"_mutex_lock" );
- 	 	mutex.unlock();
-  	named_mutex::remove((_sharedName+"_counter_mutex").c_str());
-  	return true;
-	}
-	catch(...)
-	{
-		return false;
-	}
+  {
+    return false;
+  }
+  try
+  {
+    _fileName = fileName;
+    _nrow = numRow;
+    _totalRows = _nrow;
+    _ncol = numCol;
+    _totalCols = _ncol;
+    _matType = matrixType;
+    _sepCols = sepCols;
+    if (_sepCols)
+    {
+      switch(_matType)
+      {
+        case 1:
+          _pdata = CreateFileBackedSepMatrix<char>(_fileName, filePath,
+            _dataRegionPtrs, _nrow, _ncol);
+          break;
+        case 2:
+          _pdata = CreateFileBackedSepMatrix<short>(_fileName, filePath,
+            _dataRegionPtrs, _nrow, _ncol);
+          break;
+        case 4:
+          _pdata = CreateFileBackedSepMatrix<int>(_fileName, filePath,
+            _dataRegionPtrs, _nrow, _ncol);
+          break;
+        case 8:
+          _pdata = CreateFileBackedSepMatrix<double>(_fileName, filePath,
+            _dataRegionPtrs, _nrow, _ncol);
+      }
+    }
+    else
+    {
+      switch(_matType)
+      {
+        case 1:
+          _pdata = CreateFileBackedMatrix<char>(_fileName, filePath,
+            _dataRegionPtrs, _nrow, _ncol);
+          break;
+        case 2:
+          _pdata = CreateFileBackedMatrix<short>(_fileName, filePath,
+            _dataRegionPtrs, _nrow, _ncol);
+          break;
+        case 4:
+          _pdata = CreateFileBackedMatrix<int>(_fileName, filePath,
+            _dataRegionPtrs, _nrow, _ncol);
+          break;
+        case 8:
+          _pdata = CreateFileBackedMatrix<double>(_fileName, filePath,
+            _dataRegionPtrs, _nrow, _ncol);
+      }
+    }
+    if (!_pdata)
+    {
+      return false;
+    }
+    return true;
+  }
+  catch(std::exception &e)
+  {
+    printf("%s\n", e.what());
+    printf("%s line %d\n", __FILE__, __LINE__);
+    return false;
+  }
 }
 
-bool FileBackedBigMatrix::connect( const std::string &sharedName, 
-  const std::string &fileName, const std::string &filePath, const index_type numRow, 
-  const index_type numCol, const index_type numEbytes, const int matrixType, 
-  const bool sepCols, const bool preserve )
+bool FileBackedBigMatrix::connect( const std::string &fileName, 
+  const std::string &filePath, const index_type numRow, 
+  const index_type numCol, const int matrixType, 
+  const bool sepCols)
 {
-	try
-	{
-  	named_mutex mutex( open_or_create, (sharedName+"_counter_mutex").c_str() );
-  	mutex.lock();
-	  _sharedName=sharedName;
-	  _fileName=fileName;
-	  _nrow = numRow;
-		_matrixRows = _nrow;
-	  _ncol = numCol;
-		_matrixCols = _ncol;
-	  _matType = matrixType;
-	  _sepCols = sepCols;
-	  _preserve = preserve;
-	  _sharedCounter.init(_sharedName+"_counter");
-    _filePath = filePath;
-	  if (_sepCols)
-	  {
-	    switch(_matType)
-	    {
-	      case 1:
-	        _pdata = ConnectFileBackedSepMatrix<char>(_fileName, filePath,
-	          _dataRegionPtrs, _nrow, _ncol);
-	        break;
-	      case 2:
-	        _pdata = ConnectFileBackedSepMatrix<short>(_fileName, filePath,
-          _dataRegionPtrs, _nrow, _ncol);
-	        break;
-	      case 4:
-	        _pdata = ConnectFileBackedSepMatrix<int>(_fileName, filePath,
-	          _dataRegionPtrs, _nrow, _ncol);
-	        break;
-	      case 8:
-	        _pdata = ConnectFileBackedSepMatrix<double>(_fileName, filePath,
-	          _dataRegionPtrs, _nrow, _ncol);
-	    }
-	  }
-	  else
-	  {
-			_nebytes = numEbytes;
-	    switch(_matType)
-	    {
-	      case 1:
-	        _pdata = ConnectFileBackedMatrix<char>(_fileName, filePath,
-	          _dataRegionPtrs, _nrow, _ncol);
-	        break;
-	      case 2:
-	        _pdata = ConnectFileBackedMatrix<short>(_fileName, filePath,
-	          _dataRegionPtrs, _nrow, _ncol);
-	        break;
-	      case 4:
-	        _pdata = ConnectFileBackedMatrix<int>(_fileName, filePath,
-	          _dataRegionPtrs, _nrow, _ncol);
-	        break;
-	      case 8:
-	        _pdata = ConnectFileBackedMatrix<double>(_fileName, filePath,
-	          _dataRegionPtrs, _nrow, _ncol);
-	    }
-	  }
-		if (!_pdata)
-		{
-	  	mutex.unlock();
-	  	named_mutex::remove((_sharedName+"_counter_mutex").c_str());
-			return false;
-		}
-	  CreateMutexes(_mutexPtrs, _sharedName, _ncol);
-	  _mutexLock.init( _sharedName+"_mutex_lock" );
-	  mutex.unlock();
-	  named_mutex::remove((_sharedName+"_counter_mutex").c_str());
-	  return true;
-	}
-	catch(...)
-	{
-		return false;
-	}
+  try
+  {
+    _fileName = fileName;
+    _nrow = numRow;
+    _totalRows = _nrow;
+    _ncol = numCol;
+    _totalCols = _ncol;
+    _matType = matrixType;
+    _sepCols = sepCols;
+    if (_sepCols)
+    {
+      switch(_matType)
+      {
+        case 1:
+          _pdata = ConnectFileBackedSepMatrix<char>(_fileName, filePath,
+            _dataRegionPtrs, _ncol);
+          break;
+        case 2:
+          _pdata = ConnectFileBackedSepMatrix<short>(_fileName, filePath,
+          _dataRegionPtrs, _ncol);
+          break;
+        case 4:
+          _pdata = ConnectFileBackedSepMatrix<int>(_fileName, filePath,
+            _dataRegionPtrs, _ncol);
+          break;
+        case 8:
+          _pdata = ConnectFileBackedSepMatrix<double>(_fileName, filePath,
+            _dataRegionPtrs, _ncol);
+      }
+    }
+    else
+    {
+      switch(_matType)
+      {
+        case 1:
+          _pdata = ConnectFileBackedMatrix<char>(_fileName, filePath, _dataRegionPtrs);
+          break;
+        case 2:
+          _pdata = ConnectFileBackedMatrix<short>(_fileName, filePath, _dataRegionPtrs);
+          break;
+        case 4:
+          _pdata = ConnectFileBackedMatrix<int>(_fileName, filePath, _dataRegionPtrs);
+          break;
+        case 8:
+          _pdata = ConnectFileBackedMatrix<double>(_fileName, filePath, _dataRegionPtrs);
+      }
+    }
+    if (!_pdata)
+    {
+      return false;
+    }
+    return true;
+  }
+  catch(std::exception &e)
+  {
+    printf("%s\n", e.what());
+    printf("%s line %d\n", __FILE__, __LINE__);
+    return false;
+  }
 }
 
 void DestroyFileBackedSepMatrix( const std::string &sharedName, 
-  const index_type ncol, const std::string &fileName, const bool preserve )
+  const index_type ncol)
 {
   index_type i;
   for (i=0; i < ncol; ++i)
   {
-		try
-		{
-    	shared_memory_object::remove((sharedName + "_column_" + ttos(i)).c_str());
-		}
-		catch(...)
-		{
-		}
-    if (!preserve)
+    try
     {
-      std::string removeFileName(fileName + "_column_" + ttos(i));
-      unlink( removeFileName.c_str() );
+      shared_memory_object::remove((sharedName + "_column_" + ttos(i)).c_str());
+    }
+    catch(std::exception &e)
+    {
+      printf("%s\n", e.what());
+      printf("%s line %d\n", __FILE__, __LINE__);
     }
   }
 }
 
 bool FileBackedBigMatrix::destroy()
 {
-	try
-	{
-  	named_mutex mutex( open_or_create, (_sharedName+"_counter_mutex").c_str() );
-  	mutex.lock();
-  	_dataRegionPtrs.resize(0);
-  	if (_sepCols) 
+  try
+  {
+    _dataRegionPtrs.resize(0);
+    if (_sepCols) 
     {
-      if (_sharedCounter.get() == 1) 
-      {
-        DestroyFileBackedSepMatrix(_sharedName, _matrixCols, 
-          _fileName, _preserve);
-    	}
-    	if (_pdata) 
+      DestroyFileBackedSepMatrix(_fileName, _totalCols);
+      if (_pdata) 
       {
         switch(_matType)
-      	{
+        {
           case 1:
             delete [] reinterpret_cast<char**>(_pdata);
-          	break;
-        	case 2:
-          	delete [] reinterpret_cast<short**>(_pdata);
-          	break;
-        	case 4:
-          	delete [] reinterpret_cast<int**>(_pdata);
-          	break;
-        	case 8:
-          	delete [] reinterpret_cast<double**>(_pdata);
-      	    }
-    	  }
-  	} 
-    else 
-    {             // not _sepCols
-      if (_sharedCounter.get() == 1) 
-      {
-     	  shared_memory_object::remove(_sharedName.c_str());
-        if (!_preserve)
-        {
-     	    unlink( _fileName.c_str() );
+            break;
+          case 2:
+            delete [] reinterpret_cast<short**>(_pdata);
+            break;
+          case 4:
+            delete [] reinterpret_cast<int**>(_pdata);
+            break;
+          case 8:
+            delete [] reinterpret_cast<double**>(_pdata);
+            }
         }
+    } 
+    else // not _sepCols
+    { 
+      try
+      {            
+        shared_memory_object::remove(_fileName.c_str());
       }
-  	}
-
-        // In all cases, do the following:
-  	if (_sharedCounter.get() == 1)
-  	{
-      index_type i;
-      for (i=0; i < static_cast<index_type>(_mutexPtrs.size()); ++i)
+      catch(std::exception &e)
       {
-     	  _mutexPtrs[i]->destroy();
+        printf("%s\n", e.what());
+        printf("%s line %d\n", __FILE__, __LINE__);
       }
-      _mutexLock.destroy();
-  	}
-  	mutex.unlock();
-  	named_mutex::remove((_sharedName+"_counter_mutex").c_str());
-    _ncol=0;
-    _nrow=0;
-    _matrixRows=0;
-    _matrixCols=0;
-    _pdata=0;
+    }
+        // In all cases, do the following:
     _colNames.clear();
     _rowNames.clear();
-  	return true;
+    return true;
 
-	} // end of the try
-	catch(...)
-	{
-		return false;
-	}
+  } // end of the try
+  catch(std::exception &e)
+  {
+    printf("%s\n", e.what());
+    printf("%s line %d\n", __FILE__, __LINE__);
+    return false;
+  }
+}
+
+bool FileBackedBigMatrix::flush()
+{
+  std::size_t i;
+  try
+  {
+    for (i=0; i < _dataRegionPtrs.size(); ++i)
+    {
+      if ( !(_dataRegionPtrs[i])->flush() ) return false;
+    }
+  }
+  catch(std::exception &e)
+  {
+    printf("%s\n", e.what());
+    return false;
+  }
+  return true;
 }

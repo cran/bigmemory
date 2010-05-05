@@ -1,17 +1,21 @@
 Package: bigmemory
-Type: Package
-Title: Manage massive matrices in R using C++, with support for shared
-        memory and memory-mapped files.
-Version: 3.12
-Date: 2009-10-24
-Author: Michael J. Kane and John W. Emerson
-Maintainer: John W. Emerson <john.emerson@yale.edu>
-Depends: methods, stats, utils
-Suggests: biglm
-Description: Use C++ to create, store, access, and manipulate massive
-        matrices.  Matrices may optionally be allocated to shared
-        memory and/or may use memory-mapped files.
+Version: 4.2.1
+Date: 2010-05-04
+Title: Manage massive matrices with shared memory and memory-mapped
+        files
+Author: Michael J. Kane <kaneplusplus@gmail.com> and John W. Emerson
+        <jayemerson@gmail.com>
+Maintainer: Jay and Mike <bigmemoryauthors@gmail.com>
+Depends: methods, utils
+Enhances: biganalytics, bigtabulate, bigalgebra, synchronicity
+Description: Create, store, access, and manipulate massive matrices.
+        Matrices are allocated to shared memory and may use
+        memory-mapped files.  Packages biganalytics, bigtabulate,
+        synchronicity, and bigalgebra provide advanced functionality.
 License: LGPL-3
-Packaged: 2009-10-24 21:16:49 UTC; mjk56
+Copyright: (C) 2010 John W. Emerson and Michael J. Kane
+URL: http://www.bigmemory.org
+LazyLoad: yes
+Packaged: 2010-05-04 14:34:52 UTC; jay
 Repository: CRAN
-Date/Publication: 2009-10-26 19:26:33
+Date/Publication: 2010-05-05 08:08:50
