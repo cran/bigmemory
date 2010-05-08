@@ -3,6 +3,7 @@
 #define BIGMEMORY_DEFINES_H
 
 #include <limits.h>
+#include <stdint.h>
 
 #if __STDC_VERSION__ >= 199901L
   #define HAVE_COMPLEX
@@ -11,8 +12,11 @@
   #undef HAVE_COMPLEX
 #endif 
 
-//typedef long long index_type;
-typedef intptr_t index_type;
+#ifdef __intptr_t_defined
+  typedef intptr_t index_type;
+#else
+  typedef long long index_type;
+#endif
 
 extern "C"
 {

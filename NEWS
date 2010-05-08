@@ -1,0 +1,27 @@
+#
+# NEWS for R package bigmemory
+#
+# See also the Bigmemory Project:
+# 	http://www.bigmemory.org
+#	Jay and Mike <bigmemoryauthors@bigmemory.org>
+#
+# Jay Emerson <john.emerson@yale.edu>
+# Mike Kane <michael.kane@yale.edu>
+#
+
+2010-05-08	Jay	<bigmemoryauthors@bigmemory.org>
+
+* The configuration process has been streamlined to avoid
+  warnings and allow for support of Sun Studio compiler
+  on Linux.
+
+2010-05-06	Jay and Mike	<bigmemoryauthors@bigmemory.org>
+
+* bigmemory >= 2.2.0 is accompanied by sister packages
+  biganalytics and bigtabulate; mutexes (locking) are
+  abstracted to package synchronicity, available now
+  on R-Forge and soon to be uploaded to CRAN.  Package
+  bigalgebra is on R-Forge as a beta version while we
+  sort through the range of library configuration options.
+ 
+
