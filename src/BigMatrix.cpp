@@ -13,9 +13,11 @@
 #include <boost/exception/exception.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+
 #ifndef INTERLOCKED_EXCHANGE_HACK
   #include <boost/interprocess/sync/named_mutex.hpp>
 #endif
+
 
 #include "bigmemory/BigMatrix.h"
 
