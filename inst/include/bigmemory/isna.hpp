@@ -1,5 +1,9 @@
 #ifndef ISNA_HPP
-#define ISNA_HPP
+  #define ISNA_HPP
+
+#ifndef __C99FEATURES__
+  #define __C99FEATURES__
+#endif
 
 #include <math.h>
 #include "bigmemoryDefines.h"

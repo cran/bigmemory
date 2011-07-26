@@ -1,3 +1,5 @@
+#include <math.h>
+
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -515,6 +517,7 @@ SEXP ReadMatrix(SEXP fileName, BigMatrix *pMat,
   index_type offset = static_cast<index_type>(LOGICAL_VALUE(hasRowNames));
   double d;
   int charRead;
+  char *pEnd;
   for (i=0; i < nl; ++i)
   {
     // getline may be slow
@@ -525,30 +528,33 @@ SEXP ReadMatrix(SEXP fileName, BigMatrix *pMat,
     {
       last = lc.find_first_of(sep, first);
       element = lc.substr(first, last-first);
-      if (LOGICAL_VALUE(hasRowNames) && LOGICAL_VALUE(useRowNames) && 0==j)
+      if (LOGICAL_VALUE(hasRowNames) && 0==j)
       {
-        if (!rowSizeReserved)
+        if (LOGICAL_VALUE(useRowNames))
         {
-          rn.reserve(nl);
-          rowSizeReserved = true;
+          if (!rowSizeReserved)
+          {
+            rn.reserve(nl);
+            rowSizeReserved = true;
+          }
+          std::size_t pos;
+          while ( (pos = element.find("\"", 0)) != string::npos )
+          {
+            element = element.replace(pos, 1, "");
+          }
+          while ( (pos = element.find("'", 0)) != string::npos )
+          {
+            element = element.replace(pos, 1, "");
+          }
+          rn.push_back(element);
         }
-        std::size_t pos;
-        while ( (pos = element.find("\"", 0)) != string::npos )
-        {
-          element = element.replace(pos, 1, "");
-        }
-        while ( (pos = element.find("'", 0)) != string::npos )
-        {
-          element = element.replace(pos, 1, "");
-        }
-        rn.push_back(element);
       }
       else
       {
         if (j-offset < pMat->ncol()+1)
         {
-          d = strtod(element.c_str(), NULL);
-          if (d != 0.0)
+          d = strtod(element.c_str(), &pEnd);
+          if (pEnd != element.c_str())
           {
             mat[j-offset][i] = static_cast<T>(d);
           }
@@ -845,7 +851,6 @@ SEXP get_order( MatrixAccessorType m, SEXP columns, SEXP naLast,
   UNPROTECT(1);
   return ret;
 }
-
 
 extern "C"
 {
