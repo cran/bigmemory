@@ -525,7 +525,7 @@ void* ConnectFileBackedSepMatrix( const std::string &sharedName,
   dataRegionPtrs.resize(ncol);
   for (i=0; i < ncol; ++i)
   {
-    std::string columnName = filePath + sharedName + "_column_" + ttos(i);
+    std::string columnName = filePath + "/" + sharedName + "_column_" + ttos(i);
     // Map the file to this process.
     try
     {
@@ -596,7 +596,7 @@ void* ConnectFileBackedMatrix( const std::string &fileName,
 {
   try
   {
-    file_mapping mFile((filePath+fileName).c_str(), read_write);
+    file_mapping mFile((filePath+"/"+fileName).c_str(), read_write);
     dataRegionPtrs.push_back(
       MappedRegionPtr(new MappedRegion(mFile, read_write)));
   }

@@ -17,3 +17,4 @@ else
 fi
 
 echo "PKG_CPPFLAGS=${FLAGS}" > src/Makevars.win
+echo "PKG_LIBS=-lm" >> src/Makevars.win

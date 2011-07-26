@@ -9,6 +9,27 @@
 # Mike Kane <michael.kane@yale.edu>
 #
 
+2011-06-29	Jay and Mike <bigmemoryauthors@bigmemory.org>
+
+* Modified deepcopy() with C code (thanks to Zarrar for this)
+* Added -fpermissive to possibly address a compilation issue
+  in Linux
+* Added -lm to address a linking problem with math.h
+* Fixed a problem with reading all 0's in a column in
+  read.big.matrix()
+* We note that there may be an inconsistency with read.big.matrix()
+  and write.big.matrix() that needs to be addressed.
+
+2010-10-30      Jay     <bigmemoryauthors@bigmemory.org>
+
+* Modified configure to handle a Solaris problem.
+* Added definition of __C99FEATURES__ to isna.hpp; hopefully
+  won't break anything.
+
+2010-05-16	Jay	<bigmemoryauthors@bigmemory.org>
+
+* Set proper default value op='AND' for mwhich()
+
 2010-05-08	Jay	<bigmemoryauthors@bigmemory.org>
 
 * The configuration process has been streamlined to avoid

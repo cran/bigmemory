@@ -43,19 +43,19 @@ struct operator_arrow_proxy
    mutable PseudoReference m_value;
 };
 
-template <class T>
-struct operator_arrow_proxy<T&>
-{
-   operator_arrow_proxy(T &px)
-      :  m_value(px)
-   {}
-
-   T* operator->() const { return &m_value; }
-   // This function is needed for MWCW and BCC, which won't call operator->
+//template <class T>
+//struct operator_arrow_proxy<T&>
+//{
+//   operator_arrow_proxy(T &px)
+//      :  m_value(px)
+//   {}
+//
+//   T* operator->() const { return &m_value; }
+//   // This function is needed for MWCW and BCC, which won't call operator->
    // again automatically per 13.3.1.2 para 8
 //   operator T*() const { return &m_value; }
-   mutable T &m_value;
-};
+//   mutable T &m_value;
+//};
 
 template <class Iterator, class UnaryFunction>
 class transform_iterator

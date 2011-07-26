@@ -725,7 +725,7 @@ setMethod('mwhich',
 setMethod('mwhich',
   signature(x='big.matrix', op='missing'),
   function(x, cols, vals, comps)
-    return(mwhich.internal(x, cols, vals, comps, op='OR', 
+    return(mwhich.internal(x, cols, vals, comps, op='AND', 
                            whichFuncName='MWhichBigMatrix')))
 
 setMethod('mwhich',
@@ -733,10 +733,10 @@ setMethod('mwhich',
   function(x, cols, vals, comps)
   {
     if (is.integer(x))
-      return(mwhich.internal(x, cols, vals, comps, op='OR', 
+      return(mwhich.internal(x, cols, vals, comps, op='AND', 
                              whichFuncName='MWhichRIntMatrix'))
     if (is.numeric(x))
-      return(mwhich.internal(x, cols, vals, comps, op='OR', 
+      return(mwhich.internal(x, cols, vals, comps, op='AND', 
                              whichFuncName='MWhichRNumericMatrix'))
     stop("Unsupported matrix type given to mwhich")
   })
@@ -1024,23 +1024,54 @@ cleanupcols <- function(cols=NULL, nc=NULL, colnames=NULL) {
   return(cols)
 }
 
-deepcopy <- function(x, cols=NULL, type=NULL, separated=NULL,
+cleanuprows <- function(rows=NULL, nr=NULL, rownames=NULL) {
+  if (is.null(rows)) rows <- 1:nr
+  else {
+    if (!is.numeric(rows) & !is.character(rows) & !is.logical(rows))
+      stop("column indices must be numeric, logical, or character vectors.")
+    if (is.character(rows))
+      if (is.null(rownames)) stop("row names do not exist.")
+      else rows <- mmap(rows, rownames)
+    if (is.logical(rows)) {
+      if (length(rows) != nr)
+        stop(paste("row vector length must match the number of",
+                   "rows of the matrix."))
+      rows <- which(rows)
+    }
+    tempj <- .Call("CCleanIndices", as.double(rows), as.double(nr))
+    if (is.null(tempj[[1]])) stop("Illegal row index usage in extraction.\n")
+    if (tempj[[1]]) rows <- tempj[[2]]
+  }
+  return(rows)
+}
+
+deepcopy <- function(x, cols=NULL, rows=NULL, 
+                     y=NULL, type=NULL, separated=NULL,
                      backingfile=NULL, backingpath=NULL,
                      descriptorfile=NULL, shared=TRUE)
 {
   cols <- cleanupcols(cols, ncol(x), colnames(x))
+  rows <- cleanuprows(rows, nrow(x), rownames(x))
   if (nrow(x) > 2^31-1)
     stop(paste("Too many rows to copy at this point in time;",
                "this may be fixed in the future."))
   if (is.null(type)) type <- typeof(x)
   if (is.big.matrix(x)) {
     if (is.null(separated)) separated <- is.separated(x)
-  } else separated <- FALSE
-  y <- big.matrix(nrow=nrow(x), ncol=length(cols), type=type, init=NULL,
+  } else {
+    separated <- FALSE
+  }
+  if (is.null(y)) {
+    y <- big.matrix(nrow=length(rows), ncol=length(cols), type=type, init=NULL,
                   dimnames=dimnames(x), separated=separated,
                   backingfile=backingfile, backingpath=backingpath,
                   descriptorfile=descriptorfile, shared)
-  for (i in 1:length(cols)) y[,i] <- x[,cols[i]]
+  }
+  if (is.big.matrix(x) && is.big.matrix(y))
+    .Call("CDeepCopy", x@address, y@address, as.double(rows), as.double(cols), 
+      getOption("bigmemory.typecast.warning"))
+  else
+    for (i in 1:length(cols)) y[,i] <- x[rows,cols[i]]
 
   return(y)
 }
@@ -1128,7 +1159,7 @@ filebacked.big.matrix <- function(nrow, ncol,
     backingpath <- dirname(backingfile)
     backingfile <- basename(backingfile)
   }
-  if (is.null(descriptorfile)) 
+  if (is.null(descriptorfile) && !anon.backing) 
   {
     warning(paste("No descriptor file given, it will be named",
       paste(backingfile, '.desc', sep='')))
@@ -1268,7 +1299,10 @@ setMethod('attach.resource', signature(obj='big.matrix.descriptor'),
     if (!is.na(fi$isdir) && !fi$isdir)
       stop( paste(path, "is not a directory.") )
     path = file.path(path, '.')
-    path = substr(path, 1, nchar(path)-1)
+    path <- substr(path, 1, nchar(path)-1)
+    if (substr(path, nchar(path), nchar(path)) == "/") {
+      path <- substr(path, 1, nchar(path)-1)
+    }
     if (info$sharedType == 'SharedMemory')
     {
       address <- .Call('CAttachSharedBigMatrix', info$sharedName, 
@@ -1277,10 +1311,22 @@ setMethod('attach.resource', signature(obj='big.matrix.descriptor'),
     }
     else
     {
-      if (!file.exists(file.path(path, info$filename)))
-      {
-        stop(paste("The backing file", paste(path, info$filename, sep=''),
-          "could not be found"))
+      if (!info$separated) {
+        if (!file.exists(file.path(path, info$filename)))
+        {
+          stop(paste("The backing file", paste(path, info$filename, sep=''),
+            "could not be found"))
+        }
+      } else { 
+        # It's separated and we need to check for each column.
+        for (i in 1:info$ncol) {
+          fn <- paste(info$filename, "_column_", (i-1), sep='')
+          if (!file.exists(file.path(path, fn)))
+          {
+            stop(paste("The backing file", file.path(path, fn), 
+              "could not be found"))
+          }
+        }
       }
       address <- .Call('CAttachFileBackedBigMatrix', 
         info$filename, path, info$totalRows, info$totalCols, 

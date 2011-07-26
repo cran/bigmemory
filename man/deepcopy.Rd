@@ -6,13 +6,15 @@ This is needed to make a duplicate of a \code{big.matrix}, with the
 new copy optionally filebacked.
 }
 \usage{
-deepcopy(x, cols = NULL, type = NULL, separated = NULL,
-  backingfile = NULL, backingpath = NULL, descriptorfile = NULL,
-  shared=TRUE)
+deepcopy(x, cols = NULL, rows = NULL, y = NULL, type = NULL, 
+  separated = NULL, backingfile = NULL, backingpath = NULL,
+  descriptorfile = NULL, shared=TRUE)
 }
 \arguments{
   \item{x}{a \code{\link{big.matrix}}.}
   \item{cols}{possible subset of columns for the deepcopy; could be numeric, named, or logical.}
+  \item{rows}{possible subset of rows for the deepcopy; could be numeric, named, or logical.}
+  \item{y}{optional destination object (\code{matrix} or \code{big.matrix}); if not specified, a \code{big.matrix} will be created.}
   \item{type}{preferably specified, \code{"integer"} for example.}
   \item{separated}{use separated column organization of the data instead of column-major organization; use with caution if the number of columns is large.}
   \item{backingfile}{the root name for the file(s) for the cache of \code{x}.}
