@@ -6,8 +6,6 @@
 #include <iostream>
 #include <algorithm>
 
-#include <boost/lexical_cast.hpp>
-
 #include "bigmemory/BigMatrix.h"
 #include "bigmemory/MatrixAccessor.hpp"
 #include "bigmemory/util.h"
@@ -25,6 +23,7 @@ template<typename T>
 string ttos(T i)
 {
   stringstream s;
+  s.precision(16);
   s << i;
   return s.str();
 }
@@ -69,6 +68,59 @@ void SetMatrixElements( BigMatrix *pMat, SEXP col, SEXP row, SEXP values,
         ((pVals[kIndex] < C_MIN || pVals[kIndex] > C_MAX) ?
          static_cast<CType>(NA_C) : static_cast<CType>(pVals[kIndex]));
     }
+  }
+}
+
+// Function contributed by Peter Haverty at Genentech.
+template<typename CType, typename RType, typename BMAccessorType>
+SEXP GetIndivMatrixElements( BigMatrix *pMat, double NA_C, double NA_R,
+  SEXP col, SEXP row, SEXPTYPE sxpType)
+{
+  VecPtr<RType> vec_ptr;
+  BMAccessorType mat(*pMat);
+  double *pCols = NUMERIC_DATA(col);
+  double *pRows = NUMERIC_DATA(row);
+  index_type numCols = GET_LENGTH(col);
+  int protectCount = 0;
+  SEXP retVec = PROTECT( Rf_allocVector(sxpType, numCols) );
+  ++protectCount;
+  RType *pRet = vec_ptr(retVec);
+  CType *pColumn;
+  index_type i;
+  for (i=0; i < numCols; ++i)
+  {
+    pColumn = mat[static_cast<index_type>(pCols[i])-1];
+    pRet[i] = (pColumn[static_cast<index_type>(pRows[i])-1] ==
+      static_cast<CType>(NA_C)) ?
+        static_cast<RType>(NA_R) :
+        (static_cast<RType>(pColumn[static_cast<index_type>(pRows[i])-1]));
+  }
+  UNPROTECT(protectCount);
+  return(retVec);
+}
+
+
+
+// Function contributed by Peter Haverty at Genentech.
+template<typename CType, typename RType, typename BMAccessorType>
+void SetIndivMatrixElements( BigMatrix *pMat, SEXP col, SEXP row, SEXP values,
+      double NA_C, double C_MIN, double C_MAX, double NA_R)
+{
+  BMAccessorType mat( *pMat );
+  double *pCols = NUMERIC_DATA(col);
+  index_type numCols = GET_LENGTH(col);
+  double *pRows = NUMERIC_DATA(row);
+  VecPtr<RType> vec_ptr;
+  RType *pVals = vec_ptr(values);
+  index_type i=0;
+  CType *pColumn;
+  for (i=0; i < numCols; ++i)
+  {
+    pColumn = mat[static_cast<index_type>(pCols[i])-1];
+    pColumn[static_cast<index_type>(pRows[i])-1] =
+      ((pVals[i] < C_MIN || pVals[i] > C_MAX) ?
+        static_cast<CType>(NA_C) :
+        static_cast<CType>(pVals[i]));
   }
 }
 
@@ -237,8 +289,8 @@ SEXP GetMatrixElements( BigMatrix *pMat, double NA_C, double NA_R,
         else
         {
           pRet[k] = (pColumn[static_cast<index_type>(pRows[j])-1] == 
-                     static_cast<CType>(NA_C)) ?  static_cast<RType>(NA_R) : 
-                     (static_cast<RType>(pColumn[static_cast<index_type>(pRows[j])-1]));
+            static_cast<CType>(NA_C)) ?  static_cast<RType>(NA_R) : 
+            (static_cast<RType>(pColumn[static_cast<index_type>(pRows[j])-1]));
         }
         ++k;
       }
@@ -274,6 +326,50 @@ SEXP GetMatrixElements( BigMatrix *pMat, double NA_C, double NA_R,
   }
   UNPROTECT(protectCount);
   return ret;
+}
+
+// Function contributed by Peter Haverty at Genentech.
+SEXP GetIndivMatrixElements(SEXP bigMatAddr, SEXP col, SEXP row)
+{
+  BigMatrix *pMat =
+    reinterpret_cast<BigMatrix*>(R_ExternalPtrAddr(bigMatAddr));
+  if (pMat->separated_columns())
+  {
+    switch(pMat->matrix_type())
+    {
+      case 1:
+        return GetIndivMatrixElements<char, int, SepMatrixAccessor<char> >(
+          pMat, NA_CHAR, NA_INTEGER, col, row, INTSXP);
+      case 2:
+        return GetIndivMatrixElements<short,int, SepMatrixAccessor<short> >(
+          pMat, NA_SHORT, NA_INTEGER, col, row, INTSXP);
+      case 4:
+        return GetIndivMatrixElements<int, int, SepMatrixAccessor<int> >(
+          pMat, NA_INTEGER, NA_INTEGER, col, row, INTSXP);
+      case 8:
+        return GetIndivMatrixElements<double,double,SepMatrixAccessor<double> >(
+          pMat, NA_REAL, NA_REAL, col, row, REALSXP);
+    }
+  }
+  else
+  {
+    switch(pMat->matrix_type())
+    {
+      case 1:
+        return GetIndivMatrixElements<char, int, MatrixAccessor<char> >(
+          pMat, NA_CHAR, NA_INTEGER, col, row, INTSXP);
+      case 2:
+        return GetIndivMatrixElements<short, int, MatrixAccessor<short> >(
+          pMat, NA_SHORT, NA_INTEGER, col, row, INTSXP);
+      case 4:
+        return GetIndivMatrixElements<int, int, MatrixAccessor<int> >(
+          pMat, NA_INTEGER, NA_INTEGER, col, row, INTSXP);
+      case 8:
+        return GetIndivMatrixElements<double, double, MatrixAccessor<double> >(
+          pMat, NA_REAL, NA_REAL, col, row, REALSXP);
+    }
+  }
+  return R_NilValue;
 }
 
 template<typename CType, typename RType, typename BMAccessorType>
@@ -852,6 +948,7 @@ SEXP get_order( MatrixAccessorType m, SEXP columns, SEXP naLast,
   return ret;
 }
 
+
 extern "C"
 {
 
@@ -1170,6 +1267,15 @@ void SetRowNames(SEXP address, SEXP rowNames)
   pMat->row_names(rn);
 }
 
+SEXP IsReadOnly(SEXP bigMatAddr)
+{
+  BigMatrix *pMat = reinterpret_cast<BigMatrix*>(R_ExternalPtrAddr(bigMatAddr));
+  SEXP ret = PROTECT(NEW_LOGICAL(1));
+  LOGICAL_DATA(ret)[0] = (pMat->read_only() ? (Rboolean) 1 : (Rboolean) 0);
+  UNPROTECT(1);
+  return ret;
+}
+
 SEXP CIsSubMatrix(SEXP bigMatAddr)
 {
   BigMatrix *pMat = reinterpret_cast<BigMatrix*>(R_ExternalPtrAddr(bigMatAddr));
@@ -1449,11 +1555,11 @@ SEXP CreateRAMMatrix(SEXP row, SEXP col, SEXP colnames, SEXP rownames,
   }
   catch(std::exception &e)
   {
-    printf("%s\n", e.what());
+    Rprintf("%s\n", e.what());
   }
   catch(...)
   {
-    printf("Exception caught while trying to create shared matrix.");
+    Rprintf("Exception caught while trying to create shared matrix.");
   }
   delete(pMat); 
   error("The shared matrix could not be created\n");
@@ -1962,6 +2068,55 @@ void SetMatrixElements(SEXP bigMatAddr, SEXP col, SEXP row, SEXP values)
   }
 }
 
+// Function contributed by Peter Haverty at Genentech.
+void SetIndivMatrixElements(SEXP bigMatAddr, SEXP col, SEXP row, SEXP values)
+{
+  BigMatrix *pMat = reinterpret_cast<BigMatrix*>(R_ExternalPtrAddr(bigMatAddr));
+  if (pMat->separated_columns())
+  {
+    switch (pMat->matrix_type())
+    {
+    case 1:
+      SetIndivMatrixElements<char, int, SepMatrixAccessor<char> >(
+        pMat, col, row, values, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_INTEGER);
+      break;
+    case 2:
+      SetIndivMatrixElements<short, int, SepMatrixAccessor<short> >(
+        pMat, col, row, values, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, NA_INTEGER);
+      break;
+    case 4:
+      SetIndivMatrixElements<int, int, SepMatrixAccessor<int> >(
+        pMat, col, row, values, NA_INTEGER, R_INT_MIN, R_INT_MAX, NA_INTEGER);
+      break;
+    case 8:
+      SetIndivMatrixElements<double, double, SepMatrixAccessor<double> >(
+        pMat, col, row, values, NA_REAL, R_DOUBLE_MIN, R_DOUBLE_MAX, NA_REAL);
+    }
+  }
+  else
+  {
+    switch (pMat->matrix_type())
+    {
+    case 1:
+      SetIndivMatrixElements<char, int, MatrixAccessor<char> >(
+        pMat, col, row, values, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_INTEGER);
+      break;
+    case 2:
+      SetIndivMatrixElements<short, int, MatrixAccessor<short> >(
+        pMat, col, row, values, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, NA_INTEGER);
+      break;
+    case 4:
+      SetIndivMatrixElements<int, int, MatrixAccessor<int> >(
+        pMat, col, row, values, NA_INTEGER, R_INT_MIN, R_INT_MAX, NA_INTEGER);
+      break;
+    case 8:
+      SetIndivMatrixElements<double, double, MatrixAccessor<double> >(
+        pMat, col, row, values, NA_REAL, R_DOUBLE_MIN, R_DOUBLE_MAX, NA_REAL);
+    }
+  }
+}
+
+
 void SetMatrixAll(SEXP bigMatAddr, SEXP values)
 {
   BigMatrix *pMat = reinterpret_cast<BigMatrix*>(R_ExternalPtrAddr(bigMatAddr));
@@ -2184,89 +2339,104 @@ SEXP CreateFileBackedBigMatrix(SEXP fileName, SEXP filePath, SEXP row,
   SEXP col, SEXP colnames, SEXP rownames, SEXP typeLength, SEXP ini, 
   SEXP separated)
 {
-  FileBackedBigMatrix *pMat = new FileBackedBigMatrix();
-  string fn;
-  string path = ((filePath == NULL_USER_OBJECT) ? "" : RChar2String(filePath));
-  if (isNull(fileName))
+  try
   {
-    fn=pMat->uuid()+".bin";
-  }
-  else
-  {
-    fn = RChar2String(fileName);
-  }
-  if (!pMat->create( fn, RChar2String(filePath),
-    static_cast<index_type>(NUMERIC_VALUE(row)),
-    static_cast<index_type>(NUMERIC_VALUE(col)),
-    INTEGER_VALUE(typeLength),
-    static_cast<bool>(LOGICAL_VALUE(separated))))
-  {
-    delete pMat;
-    error("Problem creating filebacked matrix.");
-    return NULL_USER_OBJECT;
-  }
-  if (colnames != NULL_USER_OBJECT)
-  {
-    pMat->column_names(RChar2StringVec(colnames));
-  }
-  if (rownames != NULL_USER_OBJECT)
-  {
-    pMat->row_names(RChar2StringVec(rownames));
-  }
-  if (GET_LENGTH(ini) != 0)
-  {
-    if (pMat->separated_columns())
+    FileBackedBigMatrix *pMat = new FileBackedBigMatrix();
+    string fn;
+    string path = ((filePath == NULL_USER_OBJECT) ? 
+      "" : 
+      RChar2String(filePath));
+    if (isNull(fileName))
     {
-      switch (pMat->matrix_type())
-      {
-        case 1:
-          SetAllMatrixElements<char, SepMatrixAccessor<char> >(
-            pMat, ini, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_REAL);
-          break;
-        case 2:
-          SetAllMatrixElements<short, SepMatrixAccessor<short> >(
-            pMat, ini, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, NA_REAL);
-          break;
-        case 4:
-          SetAllMatrixElements<int, SepMatrixAccessor<int> >(
-            pMat, ini, NA_INTEGER, R_INT_MIN, R_INT_MAX, NA_REAL);
-          break;
-        case 8:
-          SetAllMatrixElements<double, SepMatrixAccessor<double> >(
-            pMat, ini, NA_REAL, R_DOUBLE_MIN, R_DOUBLE_MAX, NA_REAL);
-      }
+      fn=pMat->uuid()+".bin";
     }
     else
     {
-      switch (pMat->matrix_type())
+      fn = RChar2String(fileName);
+    }
+    if (!pMat->create( fn, RChar2String(filePath),
+      static_cast<index_type>(NUMERIC_VALUE(row)),
+      static_cast<index_type>(NUMERIC_VALUE(col)),
+      INTEGER_VALUE(typeLength),
+      static_cast<bool>(LOGICAL_VALUE(separated))))
+    {
+      delete pMat;
+      error("Problem creating filebacked matrix.");
+      return NULL_USER_OBJECT;
+    }
+    if (colnames != NULL_USER_OBJECT)
+    {
+      pMat->column_names(RChar2StringVec(colnames));
+    }
+    if (rownames != NULL_USER_OBJECT)
+    {
+      pMat->row_names(RChar2StringVec(rownames));
+    }
+    if (GET_LENGTH(ini) != 0)
+    {
+      if (pMat->separated_columns())
       {
-        case 1:
-          SetAllMatrixElements<char, MatrixAccessor<char> >(
-            pMat, ini, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_REAL);
-          break;
-        case 2:
-          SetAllMatrixElements<short, MatrixAccessor<short> >(
-            pMat, ini, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, NA_REAL);
-          break;
-        case 4:
-          SetAllMatrixElements<int, MatrixAccessor<int> >(
-            pMat, ini, NA_INTEGER, R_INT_MIN, R_INT_MAX, NA_REAL);
-          break;
-        case 8:
-          SetAllMatrixElements<double, MatrixAccessor<double> >(
-            pMat, ini, NA_REAL, R_DOUBLE_MIN, R_DOUBLE_MAX, NA_REAL);
+        switch (pMat->matrix_type())
+        {
+          case 1:
+            SetAllMatrixElements<char, SepMatrixAccessor<char> >(
+              pMat, ini, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_REAL);
+            break;
+          case 2:
+            SetAllMatrixElements<short, SepMatrixAccessor<short> >(
+              pMat, ini, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, NA_REAL);
+            break;
+          case 4:
+            SetAllMatrixElements<int, SepMatrixAccessor<int> >(
+              pMat, ini, NA_INTEGER, R_INT_MIN, R_INT_MAX, NA_REAL);
+            break;
+          case 8:
+            SetAllMatrixElements<double, SepMatrixAccessor<double> >(
+              pMat, ini, NA_REAL, R_DOUBLE_MIN, R_DOUBLE_MAX, NA_REAL);
+        }
+      }
+      else
+      {
+        switch (pMat->matrix_type())
+        {
+          case 1:
+            SetAllMatrixElements<char, MatrixAccessor<char> >(
+              pMat, ini, NA_CHAR, R_CHAR_MIN, R_CHAR_MAX, NA_REAL);
+            break;
+          case 2:
+            SetAllMatrixElements<short, MatrixAccessor<short> >(
+              pMat, ini, NA_SHORT, R_SHORT_MIN, R_SHORT_MAX, NA_REAL);
+            break;
+          case 4:
+            SetAllMatrixElements<int, MatrixAccessor<int> >(
+              pMat, ini, NA_INTEGER, R_INT_MIN, R_INT_MAX, NA_REAL);
+            break;
+          case 8:
+            SetAllMatrixElements<double, MatrixAccessor<double> >(
+              pMat, ini, NA_REAL, R_DOUBLE_MIN, R_DOUBLE_MAX, NA_REAL);
+        }
       }
     }
+    SEXP address = R_MakeExternalPtr( dynamic_cast<BigMatrix*>(pMat),
+      R_NilValue, R_NilValue);
+    R_RegisterCFinalizerEx(address, (R_CFinalizer_t) CDestroyBigMatrix, 
+        (Rboolean) TRUE);
+    return address;
   }
-  SEXP address = R_MakeExternalPtr( dynamic_cast<BigMatrix*>(pMat),
-    R_NilValue, R_NilValue);
-  R_RegisterCFinalizerEx(address, (R_CFinalizer_t) CDestroyBigMatrix, 
-      (Rboolean) TRUE);
-  return address;
+  catch(std::exception &e)
+  {
+    Rprintf("%s\n", e.what());
+  }
+  catch(...)
+  {
+    Rprintf("Unspecified problem trying to create big.matrix\n");
+  }
+  return R_NilValue;
 }
 
 SEXP CAttachSharedBigMatrix(SEXP sharedName, SEXP rows, SEXP cols, 
-  SEXP rowNames, SEXP colNames, SEXP typeLength, SEXP separated)
+  SEXP rowNames, SEXP colNames, SEXP typeLength, SEXP separated,
+  SEXP readOnly)
 {
   SharedMemoryBigMatrix *pMat = new SharedMemoryBigMatrix();
   bool connected = pMat->connect( 
@@ -2274,7 +2444,8 @@ SEXP CAttachSharedBigMatrix(SEXP sharedName, SEXP rows, SEXP cols,
     static_cast<index_type>(NUMERIC_VALUE(rows)),
     static_cast<index_type>(NUMERIC_VALUE(cols)),
     INTEGER_VALUE(typeLength),
-    static_cast<bool>(LOGICAL_VALUE(separated)));
+    static_cast<bool>(LOGICAL_VALUE(separated)),
+    static_cast<bool>(LOGICAL_VALUE(readOnly)));
   if (!connected)
   {
     delete pMat;
@@ -2297,7 +2468,7 @@ SEXP CAttachSharedBigMatrix(SEXP sharedName, SEXP rows, SEXP cols,
 
 SEXP CAttachFileBackedBigMatrix(SEXP fileName, 
   SEXP filePath, SEXP rows, SEXP cols, SEXP rowNames, SEXP colNames, 
-  SEXP typeLength, SEXP separated)
+  SEXP typeLength, SEXP separated, SEXP readOnly)
 {
   FileBackedBigMatrix *pMat = new FileBackedBigMatrix();
   bool connected = pMat->connect( 
@@ -2306,7 +2477,8 @@ SEXP CAttachFileBackedBigMatrix(SEXP fileName,
     static_cast<index_type>(NUMERIC_VALUE(rows)),
     static_cast<index_type>(NUMERIC_VALUE(cols)),
     INTEGER_VALUE(typeLength),
-    static_cast<bool>(LOGICAL_VALUE(separated)));
+    static_cast<bool>(LOGICAL_VALUE(separated)),
+    static_cast<bool>(LOGICAL_VALUE(readOnly)));
   if (!connected)
   {
     delete pMat;

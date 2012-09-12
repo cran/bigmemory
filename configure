@@ -28,6 +28,9 @@ if test `uname` = "Linux" ; then
 elif test `uname` = "SunOS" ; then
   echo "Solaris"
   LIBS="PKG_LIBS=-lrt -lm"
+elif test `uname` = "Darwin" ; then
+  echo "Darwin"
+  FLAGS="${FLAGS} -DDARWIN"
 else
   echo "Other:" `uname`
 fi

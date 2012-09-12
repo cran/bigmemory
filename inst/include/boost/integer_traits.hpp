@@ -169,6 +169,7 @@ class integer_traits<unsigned long>
 #if !defined(BOOST_NO_INTEGRAL_INT64_T) && !defined(BOOST_NO_INT64_T)
 #if defined(ULLONG_MAX) && defined(BOOST_HAS_LONG_LONG)
 
+#if dummy_ulong_size != dummy_ulong_long_type_size
 template<>
 class integer_traits< ::boost::long_long_type>
   : public std::numeric_limits< ::boost::long_long_type>,
@@ -180,6 +181,7 @@ class integer_traits< ::boost::ulong_long_type>
   : public std::numeric_limits< ::boost::ulong_long_type>,
     public detail::integer_traits_base< ::boost::ulong_long_type, 0, ULLONG_MAX>
 { };
+#endif
 
 #elif defined(ULONG_LONG_MAX) && defined(BOOST_HAS_LONG_LONG)
 

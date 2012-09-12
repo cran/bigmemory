@@ -15,6 +15,7 @@ if [ "${R_ARCH}" = "/x64" ]; then
 else
   echo "no"
 fi
+FLAGS="${FLAGS} -DBOOST_NO_INCLASS_MEMBER_INITIALIZATION"
 
 echo "PKG_CPPFLAGS=${FLAGS}" > src/Makevars.win
 echo "PKG_LIBS=-lm" >> src/Makevars.win
