@@ -6,6 +6,7 @@
 \alias{is.separated}
 \alias{is.filebacked}
 \alias{is.shared}
+\alias{is.readonly}
 \alias{[.big.matrix}
 \alias{is.nil}
 \title{The core ``big.matrix'' operations.}
@@ -30,6 +31,7 @@ is.big.matrix(x)
 is.separated(x)
 is.filebacked(x)
 is.shared(x)
+is.readonly(x)
 is.nil(address)
 }
 \arguments{

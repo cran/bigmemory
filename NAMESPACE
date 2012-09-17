@@ -1,4 +1,4 @@
-import(methods)
+import(methods, bigmemory.sri)
 importFrom(utils, head, tail)
 
 exportClasses(big.matrix, big.matrix.descriptor)
@@ -26,7 +26,8 @@ exportMethods("[", "[<-",
               is.filebacked,
               is.sub.big.matrix,
               flush,
-              is.shared)
+              is.shared,
+              is.readonly)
 
 useDynLib(bigmemory)
 

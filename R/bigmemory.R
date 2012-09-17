@@ -11,6 +11,13 @@ mmap = function(x, y) {
   return(ans)
 }
 
+checkReadOnly <- function(x)
+{
+  if (is.readonly(x)) {
+    stop("you may not modify a read-only big.matrix object")
+  }
+}
+
 #############################################################################
 
 setClass('big.matrix', representation(address='externalptr'))
@@ -22,6 +29,12 @@ setClass('big.matrix.descriptor', contains='descriptor')
 # Here, x is a descriptor, and the result is the description which is
 # the relevant data needed for the attach.
 setGeneric('description', function(x) standardGeneric('description'))
+
+setMethod('describe', signature(x='big.matrix'),
+  function(x)
+  {
+    return(new('big.matrix.descriptor', description=DescribeBigMatrix(x)))
+  })
 
 big.matrix <- function(nrow, ncol, type=options()$bigmemory.default.type,
                        init=NULL, dimnames=NULL, separated=FALSE,
@@ -166,6 +179,7 @@ rownames.bm <- function(x)
 
 assign('colnames.bm<-', 
   function(x, value) {
+      checkReadOnly(x)
       if (is.character(value)) {
         if (any(value=="")) {
           stop("empty strings prohibited in column names")
@@ -184,6 +198,7 @@ assign('colnames.bm<-',
 
 assign('rownames.bm<-',
   function(x,value) {
+      checkReadOnly(x)
       if (is.character(value)) {
         if (any(value=="")) {
           stop("empty strings prohibited in row names")
@@ -259,6 +274,33 @@ GetElements.bm <- function(x, i, j, drop=TRUE)
   }
   return(retList[[1]])
 }
+
+# Function contributed by Peter Haverty at Genentech.
+GetIndivElements.bm <- function(x,i) {
+  # Check i
+  if (is.logical(i)) {
+    stop("Logical indices not allowed when subsetting by a matrix.")
+  }
+  if (ncol(i) != 2) {
+    stop("When subsetting with a matrix, it must have two columns.")
+  }
+  if (is.character(i)) {
+    if (is.null(rownames(x))) stop("row names do not exist.")
+    if (is.null(colnames(x))) stop("column names do not exist.")
+    i <- matrix(c(mmap(i[,1], rownames(x)), mmap(i[,2], colnames(x))), ncol=2)
+  }
+  tempi <- .Call("CCleanIndices", as.double(i[,1]), as.double(nrow(x)))
+  if (is.null(tempi[[1]])) stop("Illegal row index usage in assignment.\n")
+  if (tempi[[1]]) i[,1] <- tempi[[2]]
+  tempj <- .Call("CCleanIndices", as.double(i[,2]), as.double(ncol(x)))
+  if (is.null(tempj[[1]])) stop("Illegal column index usage in assignment.\n")
+  if (tempj[[1]]) i[,2] <- tempj[[2]]
+
+  # Call .Call C++
+  return(.Call("GetIndivMatrixElements", x@address, as.double(i[,2]),
+    as.double(i[,1])))
+}
+
 
 GetCols.bm <- function(x, j, drop=TRUE)
 {
@@ -379,8 +421,15 @@ setMethod("[",
   signature(x = "big.matrix", i="missing", j="missing", drop = "logical"),
   function(x, drop) return(GetAll.bm(x, drop)))
 
+# Function contributed by Peter Haverty at Genentech.
+setMethod('[',
+  signature(x = "big.matrix",i="matrix",j="missing",drop="missing"),
+  function(x, i) return(GetIndivElements.bm(x, i)))
+
+
 SetElements.bm <- function(x, i, j, value)
 {
+  checkReadOnly(x)
   if (!is.numeric(i) & !is.character(i) & !is.logical(i))
     stop("row indices must be numeric, logical, or character vectors.")
   if (!is.numeric(j) & !is.character(j) & !is.logical(j))
@@ -457,8 +506,61 @@ SetElements.bm <- function(x, i, j, value)
   return(x)
 }
 
+SetIndivElements.bm <- function(x, i, value) {
+  # Check i
+  checkReadOnly(x)
+  if (is.logical(i)) {
+    stop("Logical indices not allowed when subsetting by a matrix.")
+  }
+  if (ncol(i) != 2) {
+    stop("When subsetting with a matrix, it must have two columns.")
+  }
+  if (is.character(i)) {
+    if (is.null(rownames(x))) stop("row names do not exist.")
+    if (is.null(colnames(x))) stop("column names do not exist.")
+    i <- matrix(c(mmap(i[,1], rownames(x)), mmap(i[,2], colnames(x))), ncol=2)
+  }
+  tempi <- .Call("CCleanIndices", as.double(i[,1]), as.double(nrow(x)))
+  if (is.null(tempi[[1]])) stop("Illegal row index usage in assignment.\n")
+  if (tempi[[1]]) i[,1] <- tempi[[2]]
+  tempj <- .Call("CCleanIndices", as.double(i[,2]), as.double(ncol(x)))
+  if (is.null(tempj[[1]])) stop("Illegal column index usage in assignment.\n")
+  if (tempj[[1]]) i[,2] <- tempj[[2]]
+
+  # Check value length, rep as necessary
+  if (length(value) > nrow(i) || nrow(i) %% length(value) != 0) {
+    stop("number of items to replace is not a multiple of replacement length")
+  }
+  if (length(value) < nrow(i)) {
+    value = rep(value, nrow(i) %/% length(value))
+  }
+
+  # Give typecast warning if necessary
+  if ( options()$bigmemory.typecast.warning &&
+       ((typeof(value) == "double") && (typeof(x) != "double") ||
+       (typeof(value) == "integer" &&
+        (typeof(x) != "double" && typeof(x) != "integer"))) )
+  {
+    warning(cat("Assignment will down cast from ", typeof(value), " to ",
+                typeof(x), "\nHint: To remove this warning type:  ",
+                "options(bigmemory.typecast.warning=FALSE)\n", sep=''))
+  }
+
+  # Call appropriate .Call C++
+  if (typeof(x) == 'double') {
+    .Call("SetIndivMatrixElements", x@address, as.double(i[,2]),
+      as.double(i[,1]), as.double(value))
+  } else {
+    .Call("SetIndivMatrixElements", x@address, as.double(i[,2]),
+      as.double(i[,1]), as.integer(value))
+  }
+  return(x)
+}
+
+
 SetCols.bm <- function(x, j, value)
 {
+  checkReadOnly(x)
   if (!is.numeric(j) & !is.character(j) & !is.logical(j))
     stop("column indices must be numeric, logical, or character vectors.")
   if (is.character(j))
@@ -524,6 +626,7 @@ SetCols.bm <- function(x, j, value)
 
 SetRows.bm <- function(x, i, value) 
 {
+  checkReadOnly(x)
   if (!is.numeric(i) & !is.character(i) & !is.logical(i))
     stop("row indices must be numeric, logical, or character vectors.")
   if (is.character(i))
@@ -594,6 +697,7 @@ SetRows.bm <- function(x, i, value)
 
 SetAll.bm <- function(x, value) 
 {
+  checkReadOnly(x)
   if ( options()$bigmemory.typecast.warning &&
        ((typeof(value) == "double") && (typeof(x) != "double") ||
        (typeof(value) == "integer" &&
@@ -659,6 +763,11 @@ setMethod('[<-',
 setMethod('[<-',
   signature(x = "big.matrix", i="missing", j="missing"),
   function(x, value) return(SetAll.bm(x, value)))
+
+# Function contributed by Peter Haverty at Genentech.
+setMethod('[<-',
+  signature(x = "big.matrix",i="matrix",j="missing"),
+  function(x, i, value) return(SetIndivElements.bm(x, i, value)))
 
 setMethod('typeof', signature(x="big.matrix"),
   function(x) return(.Call('GetTypeString', x@address)))
@@ -901,7 +1010,7 @@ setMethod('read.big.matrix', signature(filename='character'),
              quiet=TRUE), split=sep))
       colNames <- gsub("\"", "", colNames, perl=TRUE)
       colNames <- gsub("\'", "", colNames, perl=TRUE)
-      if (is.na(colNames[1]) | colNames[1]=="") colNames <- colNames[-1]
+      if (is.na(colNames[1])) colNames <- colNames[-1]
       if (is.character(col.names)) {
         warning("Using supplied column names and skipping the header row.\n")
         colNames <- col.names
@@ -914,10 +1023,14 @@ setMethod('read.big.matrix', signature(filename='character'),
     }
 
     # Get the first line of data
-    firstLineVals <- unlist(strsplit(
-      scan(filename, what='character', skip=(skip+headerOffset), 
-           nlines=1, sep="\n", quiet=TRUE), split=sep))
+    firstLine <- scan(filename, what='character', skip=(skip+headerOffset),
+      nlines=1, sep="\n", quiet=TRUE)
+    firstLineVals <- unlist(strsplit(firstLine, split=sep))
+    numFields <- length(firstLineVals)
     firstLineVals[firstLineVals=="NA"] <- NA
+    if (length(firstLineVals) < numFields) {
+      firstLineVals <- c(firstLineVals, NA)
+    }
 
     # At this point, we assume there are length(colNames) columns of data if
     # available, otherwise, figure it out.
@@ -1245,9 +1358,6 @@ attach.big.matrix = function(obj, ...)
   return(attach.resource(obj, ...))
 }
 
-setGeneric('attach.resource', 
-  function(obj, ...) standardGeneric('attach.resource'))
-
 setMethod('attach.resource', signature(obj='character'),
   function(obj, ...)
   {
@@ -1303,11 +1413,18 @@ setMethod('attach.resource', signature(obj='big.matrix.descriptor'),
     if (substr(path, nchar(path), nchar(path)) == "/") {
       path <- substr(path, 1, nchar(path)-1)
     }
+
+    readOnly <- ifelse( is.null(list(...)$readonly), FALSE, list(...)$readonly)
+    if (!is.logical(readOnly)) {
+      stop("The readOnly argument must be of type logical")
+    }
+    
     if (info$sharedType == 'SharedMemory')
     {
       address <- .Call('CAttachSharedBigMatrix', info$sharedName, 
         info$totalRows, info$totalCols, as.character(info$rowNames), 
-        as.character(info$colNames), as.integer(typeLength), info$separated)
+        as.character(info$colNames), as.integer(typeLength), info$separated,
+        readOnly)
     }
     else
     {
@@ -1331,19 +1448,24 @@ setMethod('attach.resource', signature(obj='big.matrix.descriptor'),
       address <- .Call('CAttachFileBackedBigMatrix', 
         info$filename, path, info$totalRows, info$totalCols, 
         as.character(info$rowNames), as.character(info$colNames), 
-        as.integer(typeLength), info$separated)
+        as.integer(typeLength), info$separated, readOnly)
     }
     if (!is.null(address)) 
     {
       .Call("SetRowOffsetInfo", address, info$rowOffset, info$nrow)
       .Call("SetColumnOffsetInfo", address, info$colOffset, info$ncol)
-      ans <- new('big.matrix', address=address)
+      ret <- new('big.matrix', address=address)
+      # If the user did not specify read-only but the big matrix could 
+      # only be opened read-only then issue a warning.
+      if (readOnly != is.readonly(ret)) {
+        warning("big.matrix object could only be opened read-only.")
+      }
     }
     else 
     {
       stop("Fatal error in attach: big.matrix could not be attached.")
     }
-    return(ans)  
+    return(ret)  
   })
 
 setGeneric('is.filebacked', function(x) standardGeneric('is.filebacked'))
@@ -1484,4 +1606,9 @@ is.nil <- function(address) {
   ans <- .Call("isnil", address)
   return(ans)
 }
+
+setGeneric('is.readonly', function(x) standardGeneric('is.readonly'))
+
+setMethod('is.readonly', signature(x='big.matrix'),
+  function(x) .Call("IsReadOnly", x@address))
 

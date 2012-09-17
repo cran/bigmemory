@@ -61,9 +61,13 @@ BOOST_TT_AUX_BOOL_TRAIT_CV_SPEC1(is_integral,__int64,true)
 #endif
 #endif
 
+const int dummy_ulong_size = sizeof(unsigned long);
+const int dummy_ulong_long_type_size = sizeof(::boost::ulong_long_type);
 # if defined(BOOST_HAS_LONG_LONG)
-BOOST_TT_AUX_BOOL_TRAIT_CV_SPEC1(is_integral, ::boost::ulong_long_type,true)
-BOOST_TT_AUX_BOOL_TRAIT_CV_SPEC1(is_integral, ::boost::long_long_type,true)
+#if dummy_ulong_size != dummy_ulong_long_type_size
+  BOOST_TT_AUX_BOOL_TRAIT_CV_SPEC1(is_integral, ::boost::ulong_long_type,true)
+  BOOST_TT_AUX_BOOL_TRAIT_CV_SPEC1(is_integral, ::boost::long_long_type,true)
+#endif 
 #elif defined(BOOST_HAS_MS_INT64)
 BOOST_TT_AUX_BOOL_TRAIT_CV_SPEC1(is_integral,unsigned __int64,true)
 BOOST_TT_AUX_BOOL_TRAIT_CV_SPEC1(is_integral,__int64,true)

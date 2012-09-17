@@ -80,8 +80,13 @@
 //
 #if !defined(BOOST_HAS_LONG_LONG) && !defined(BOOST_NO_LONG_LONG_NUMERIC_LIMITS)
 #  define BOOST_NO_LONG_LONG_NUMERIC_LIMITS
+#else
 #endif
 
+
+#  ifdef __GNUC__
+#include <stdint.h>
+#  endif 
 //
 // if there is no __int64 then there is no specialisation
 // for numeric_limits<__int64> either:
@@ -467,8 +472,10 @@ namespace std {
 #if defined(BOOST_HAS_LONG_LONG)
 namespace boost{
 #  ifdef __GNUC__
-   __extension__ typedef long long long_long_type;
-   __extension__ typedef unsigned long long ulong_long_type;
+   //__extension__ typedef long long long_long_type;
+   //__extension__ typedef unsigned long long ulong_long_type;
+  typedef int64_t long_long_type;
+  typedef uint64_t ulong_long_type;
 #  else
    typedef long long long_long_type;
    typedef unsigned long long ulong_long_type;

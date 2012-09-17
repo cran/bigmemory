@@ -29,7 +29,7 @@ class BigMatrix : public boost::noncopyable
   public:
     BigMatrix():_ncol(0),_nrow(0), _totalRows(0), _totalCols(0),
                 _colOffset(0), _rowOffset(0),_matType(0), _pdata(NULL),
-                _sepCols(false){}
+                _sepCols(false), _readOnly(false){}
     virtual ~BigMatrix(){}
 
     // The next function returns the matrix data.  It will generally be passed
@@ -140,6 +140,16 @@ class BigMatrix : public boost::noncopyable
       _nrow=newNumCols;
       return true;
     }
+    
+    const bool read_only() const
+    {
+      return _readOnly;
+    }
+
+    void read_only(bool newReadOnly)
+    {
+      _readOnly = newReadOnly;
+    }
   
     void* data_ptr() {return _pdata;}
 
@@ -159,6 +169,7 @@ class BigMatrix : public boost::noncopyable
     bool _sepCols;
     Names _colNames;
     Names _rowNames;
+    bool _readOnly;
 };
 
 class LocalBigMatrix : public BigMatrix
@@ -210,7 +221,7 @@ class SharedMemoryBigMatrix : public SharedBigMatrix
       const int matrixType, const bool sepCols);
     virtual bool connect( const std::string &uuid, const index_type numRow, 
       const index_type numCol, const int matrixType,
-      const bool sepCols);
+      const bool sepCols, const bool readOnly=false);
 
   protected:
     virtual bool destroy();
@@ -230,7 +241,8 @@ class FileBackedBigMatrix : public SharedBigMatrix
       const index_type numCol, const int matrixType, const bool sepCols);
     virtual bool connect( const std::string &fileName, 
       const std::string &filePath, const index_type numRow, 
-      const index_type numCol, const int matrixType, const bool sepCols);
+      const index_type numCol, const int matrixType, const bool sepCols,
+      const bool readOnly=false);
     std::string file_name() const {return _fileName;}
     bool flush();
   protected:
