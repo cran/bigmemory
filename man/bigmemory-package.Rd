@@ -21,10 +21,10 @@ work both with \code{big.matrix} and native \R \code{matrix} objects.
 \tabular{ll}{
 Package: \tab bigmemory\cr
 Type: \tab Package\cr
-Version: \tab 4.3.0\cr
-Date: \tab 2012-09-12\cr
+Version: \tab 4.4.0\cr
+Date: \tab 2013-03-09\cr
 License: \tab LGPL-3\cr
-Copyright: \tab (C) 2012 Michael J. Kane and John W. Emerson\cr
+Copyright: \tab (C) 2013 Michael J. Kane and John W. Emerson\cr
 URL: \tab http://www.bigmemory.org\cr
 LazyLoad: \tab yes\cr
 }

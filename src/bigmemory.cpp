@@ -38,7 +38,7 @@ string ttos<char>(char i)
 
 bool TooManyRIndices( index_type val )
 {
-  return val > (powl(2, 31)-1);
+  return double(val) > pow(2.0, 31.0)-1.0;
 }
 
 template<typename CType, typename RType, typename BMAccessorType>

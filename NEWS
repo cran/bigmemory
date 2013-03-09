@@ -9,6 +9,13 @@
 # Mike Kane <michael.kane@yale.edu>
 #
 
+2013-03-09	Jay and Mike <bigmemoryauthors@bigmemory.org>
+
+* We missed a NEWS entry.  Windows support is temporarily suspended
+  due to issues with the Boost headers.
+* We now depend on bigmemory.sri (a trivial dependency relating to
+  our big.matrix descriptors) and new package BH (for Boost headers).
+
 2011-06-29	Jay and Mike <bigmemoryauthors@bigmemory.org>
 
 * Modified deepcopy() with C code (thanks to Zarrar for this)
