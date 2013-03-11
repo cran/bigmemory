@@ -25,12 +25,12 @@
 #define COND_EXCEPTION_PRINT(bYes)                \
   if (bYes)                                       \
   {                                               \
-    printf("%s\n", e.what());                     \
-    printf("%s line %d\n", __FILE__, __LINE__);   \
+    Rprintf("%s\n", e.what());                     \
+    Rprintf("%s line %d\n", __FILE__, __LINE__);   \
   }                                               \
 
 #define COND_PRINT(bYes, str, format) \
-  if (bYes) printf(str, format);
+  if (bYes) Rprintf(str, format);
     
 #define DEBUG false
 
