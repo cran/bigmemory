@@ -1612,3 +1612,9 @@ setGeneric('is.readonly', function(x) standardGeneric('is.readonly'))
 setMethod('is.readonly', signature(x='big.matrix'),
   function(x) .Call("IsReadOnly", x@address))
 
+getCType <- function(x) {
+  if (!inherits(x, "big.matrix"))
+    stop("getCType takes a big.matrix as an argument.")
+
+  return(.Call("CGetType", x@address, PACKAGE="bigmemory"))
+}
