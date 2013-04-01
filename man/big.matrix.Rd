@@ -9,6 +9,7 @@
 \alias{is.readonly}
 \alias{[.big.matrix}
 \alias{is.nil}
+\alias{getCType}
 \title{The core ``big.matrix'' operations.}
 \description{
 Create a \code{big.matrix} (or check to see if an object is a \code{big.matrix},
@@ -33,6 +34,7 @@ is.filebacked(x)
 is.shared(x)
 is.readonly(x)
 is.nil(address)
+getCType(x)
 }
 \arguments{
   \item{x}{a \code{matrix}, \code{vector}, or \code{data.frame} for \code{as.big.matrix}; if a vector, a one-column\cr \code{big.matrix} is created by \code{as.big.matrix}; if a \code{data.frame}, see details.  For the \code{is.*} functions, \code{x} is likely a \code{big.matrix}.}

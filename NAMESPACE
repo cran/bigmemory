@@ -7,7 +7,7 @@ export(big.matrix,
        filebacked.big.matrix,
        attach.big.matrix,
        sub.big.matrix,
-       deepcopy, morder, mpermute, is.nil)
+       deepcopy, morder, mpermute, is.nil, getCType)
 
 exportMethods("[", "[<-",
               dimnames,
