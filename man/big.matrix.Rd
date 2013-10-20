@@ -9,7 +9,6 @@
 \alias{is.readonly}
 \alias{[.big.matrix}
 \alias{is.nil}
-\alias{getCType}
 \title{The core ``big.matrix'' operations.}
 \description{
 Create a \code{big.matrix} (or check to see if an object is a \code{big.matrix},
@@ -20,21 +19,20 @@ may be file-backed.
 big.matrix(nrow, ncol, type = options()$bigmemory.default.type,
   init = NULL, dimnames = NULL, separated = FALSE,
   backingfile = NULL, backingpath = NULL, descriptorfile = NULL,
-  shared = TRUE)
+  binarydescriptor=FALSE, shared = TRUE)
 filebacked.big.matrix(nrow, ncol,
   type = options()$bigmemory.default.type, init = NULL,
   dimnames = NULL, separated = FALSE, backingfile = NULL,
-  backingpath = NULL, descriptorfile = NULL)
+  backingpath = NULL, descriptorfile = NULL, binarydescriptor=FALSE)
 as.big.matrix(x, type = NULL, separated = FALSE,
   backingfile = NULL, backingpath = NULL, descriptorfile = NULL,
-  shared=TRUE)
+  binarydescriptor=FALSE, shared=TRUE)
 is.big.matrix(x)
 is.separated(x)
 is.filebacked(x)
 is.shared(x)
 is.readonly(x)
 is.nil(address)
-getCType(x)
 }
 \arguments{
   \item{x}{a \code{matrix}, \code{vector}, or \code{data.frame} for \code{as.big.matrix}; if a vector, a one-column\cr \code{big.matrix} is created by \code{as.big.matrix}; if a \code{data.frame}, see details.  For the \code{is.*} functions, \code{x} is likely a \code{big.matrix}.}
@@ -47,6 +45,7 @@ getCType(x)
   \item{backingfile}{the root name for the file(s) for the cache of \code{x}.}
   \item{backingpath}{the path to the directory containing the file backing cache.}
   \item{descriptorfile}{the name of the file to hold the backingfile description, for subsequent use with \code{\link{attach.big.matrix}}; if \code{NULL}, the \code{backingfile} is used as the root part of the descriptor file name.  The descriptor file is placed in the same directory as the backing files.}
+  \item{binarydescriptor}{the flag to specify if the binary RDS format should be used for the backingfile description, for subsequent use with \code{\link{attach.big.matrix}}; if \code{NULL} of \code{FALSE}, the \code{dput()} file format is used.}
   \item{shared}{\code{TRUE} by default, and always \code{TRUE} if the \code{big.matrix} is file-backed.  For a non-filebacked \code{big.matrix}, \code{shared=FALSE} uses non-shared memory, which can be more stable for large (say, >50\% of RAM) objects.  Shared memory allocation can sometimes fail in such cases due to exhausted shared-memory resources in the system.}
   \item{address}{an \code{externalptr}, so \code{is.nil(x@address)} might be a sensible thing to want to check, but it's pretty obscure.}
 }

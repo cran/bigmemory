@@ -260,7 +260,12 @@ SEXP GetMatrixElements( BigMatrix *pMat, double NA_C, double NA_R,
   int protectCount = 1;
   SET_VECTOR_ELT( ret, 1, NULL_USER_OBJECT );
   SET_VECTOR_ELT( ret, 2, NULL_USER_OBJECT );
-  SEXP retMat = PROTECT( Rf_allocMatrix(sxpType, numRows, numCols) );
+  SEXP retMat;
+  if (numCols == 1 || numRows == 1) {
+    retMat = PROTECT( Rf_allocVector(sxpType, numRows * numCols) );
+  } else {
+    retMat = PROTECT( Rf_allocMatrix(sxpType, numRows, numCols) );
+  }
   ++protectCount;
   SET_VECTOR_ELT(ret, 0, retMat);
   //SEXP ret = PROTECT( new_vec(numCols*numRows) );
@@ -390,7 +395,12 @@ SEXP GetMatrixRows( BigMatrix *pMat, double NA_C, double NA_R,
   int protectCount = 1;
   SET_VECTOR_ELT( ret, 1, NULL_USER_OBJECT );
   SET_VECTOR_ELT( ret, 2, NULL_USER_OBJECT );
-  SEXP retMat = PROTECT( Rf_allocMatrix(sxpType, numRows, numCols) );
+  SEXP retMat;
+  if (numCols == 1 || numRows == 1) {
+    retMat = PROTECT( Rf_allocVector(sxpType, numCols) );
+  } else {
+    retMat = PROTECT( Rf_allocMatrix(sxpType, numRows, numCols) );
+  }
   ++protectCount;
   SET_VECTOR_ELT(ret, 0, retMat);
   //SEXP ret = PROTECT( new_vec(numCols*numRows) );
@@ -464,7 +474,12 @@ SEXP GetMatrixCols( BigMatrix *pMat, double NA_C, double NA_R,
   int protectCount = 1;
   SET_VECTOR_ELT( ret, 1, NULL_USER_OBJECT );
   SET_VECTOR_ELT( ret, 2, NULL_USER_OBJECT );
-  SEXP retMat = PROTECT( Rf_allocMatrix(sxpType, numRows, numCols) );
+  SEXP retMat;
+  if (numCols == 1 || numRows == 1) {
+    retMat = PROTECT( Rf_allocVector(sxpType, numRows) );
+  } else {
+    retMat = PROTECT( Rf_allocMatrix(sxpType, numRows, numCols) );
+  }
   ++protectCount;
   SET_VECTOR_ELT(ret, 0, retMat);
   //SEXP ret = PROTECT( new_vec(numCols*numRows) );
@@ -537,7 +552,12 @@ SEXP GetMatrixAll( BigMatrix *pMat, double NA_C, double NA_R,
   int protectCount = 1;
   SET_VECTOR_ELT( ret, 1, NULL_USER_OBJECT );
   SET_VECTOR_ELT( ret, 2, NULL_USER_OBJECT );
-  SEXP retMat = PROTECT( Rf_allocMatrix(sxpType, numRows, numCols) );
+  SEXP retMat;
+  if (numCols == 1 || numRows == 1) {
+    retMat = PROTECT( Rf_allocVector(sxpType, numRows * numCols) );
+  } else {
+    retMat = PROTECT( Rf_allocMatrix(sxpType, numRows, numCols) );
+  }
   ++protectCount;
   SET_VECTOR_ELT(ret, 0, retMat);
   //SEXP ret = PROTECT( new_vec(numCols*numRows) );

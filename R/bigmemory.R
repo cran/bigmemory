@@ -39,7 +39,7 @@ setMethod('describe', signature(x='big.matrix'),
 big.matrix <- function(nrow, ncol, type=options()$bigmemory.default.type,
                        init=NULL, dimnames=NULL, separated=FALSE,
                        backingfile=NULL, backingpath=NULL, descriptorfile=NULL,
-                       shared=TRUE)
+                       binarydescriptor=FALSE, shared=TRUE)
 {
   if (!is.null(backingfile))
   {
@@ -47,7 +47,8 @@ big.matrix <- function(nrow, ncol, type=options()$bigmemory.default.type,
     return(filebacked.big.matrix(nrow=nrow, ncol=ncol, type=type, init=init,
                                dimnames=dimnames, separated=separated,
                                backingfile=backingfile, backingpath=backingpath,
-                               descriptorfile=descriptorfile))
+                               descriptorfile=descriptorfile,
+                               binarydescriptor=binarydescriptor))
   }
   if (nrow < 1 | ncol < 1)
     stop('A big.matrix must have at least one row and one column')
@@ -96,14 +97,14 @@ setMethod('is.big.matrix', definition=function(x) return(FALSE))
 setGeneric('as.big.matrix', 
   function(x, type=NULL, separated=FALSE,
            backingfile=NULL, backingpath=NULL,
-           descriptorfile=NULL, shared=TRUE) standardGeneric('as.big.matrix'))
+           descriptorfile=NULL, binarydescriptor=FALSE, shared=TRUE) standardGeneric('as.big.matrix'))
 
 setMethod('as.matrix', signature(x='big.matrix'),
   function(x) return(x[,]))
 
 setMethod('as.big.matrix', signature(x='matrix'),
   function(x, type, separated, backingfile, backingpath, descriptorfile,
-    shared)
+    binarydescriptor, shared)
   {
     if (!is.numeric(x)) {
       warning("Casting to numeric type")
@@ -116,7 +117,8 @@ setMethod('as.big.matrix', signature(x='matrix'),
       y <- big.matrix(nrow=nrow(x), ncol=ncol(x), type=type, 
         init=NULL, dimnames=dimnames(x), separated=separated,
         backingfile=backingfile, backingpath=backingpath,
-        descriptorfile=descriptorfile, shared=shared)
+        descriptorfile=descriptorfile, binarydescriptor=binarydescriptor,
+        shared=shared)
       y[1:nrow(x),1:ncol(x)] <- x
       junk <- gc() 
     } else stop('bigmemory: that type is not implemented.')
@@ -125,7 +127,7 @@ setMethod('as.big.matrix', signature(x='matrix'),
 
 setMethod('as.big.matrix', signature(x='data.frame'),
   function(x, type, separated, backingfile, backingpath, descriptorfile,
-    shared)
+    binarydescriptor, shared)
   {
     warning("Coercing data.frame to matrix via factor level numberings.")
     if (is.null(type)) type <- options()$bigmemory.default.type
@@ -134,7 +136,8 @@ setMethod('as.big.matrix', signature(x='data.frame'),
       y <- big.matrix(nrow=nrow(x), ncol=ncol(x), type=type, 
         init=NULL, dimnames=dimnames(x), separated=separated,
         backingfile=backingfile, backingpath=backingpath,
-        descriptorfile=descriptorfile, shared=shared)
+        descriptorfile=descriptorfile, binarydescriptor=binarydescriptor,
+        shared=shared)
       oldbtw <- options()$bigmemory.typecast.warning
       options(bigmemory.typecast.warning=FALSE)
       for (i in 1:ncol(x)) {
@@ -151,7 +154,7 @@ setMethod('as.big.matrix', signature(x='data.frame'),
 
 setMethod('as.big.matrix', signature(x='vector'),
   function(x, type, separated, backingfile, backingpath, descriptorfile,
-    shared)
+    binarydescriptor, shared)
   {
     if (!is.numeric(x)) {
       warning("Casting to numeric type")
@@ -160,7 +163,7 @@ setMethod('as.big.matrix', signature(x='vector'),
     x <- matrix(x, length(x), 1)
     warning("Coercing vector to a single-column matrix.")
     return(as.big.matrix(x, type, separated, backingfile, 
-                         backingpath, descriptorfile, shared))
+                         backingpath, descriptorfile, binarydescriptor, shared))
   })
   
 colnames.bm <- function(x)
@@ -259,20 +262,8 @@ GetElements.bm <- function(x, i, j, drop=TRUE)
   if (tempj[[1]]) j <- tempj[[2]]
 
   retList <- .Call("GetMatrixElements", x@address, as.double(j), as.double(i))
-
-  dimnames(retList[[1]]) <- list( retList[[2]], retList[[3]] )
-  if (drop) {
-    if (any(dim(retList[[1]])==1)) {
-      if (dim(retList[[1]])[1]!=1 || dim(retList[[1]])[2]!=1) {
-        if (dim(retList[[1]])[1]==1) {
-          thesenames <- retList[[3]]
-        } else thesenames <- retList[[2]]
-      } else thesenames <- NULL
-      retList[[1]] = as.vector(retList[[1]])
-      names(retList[[1]]) <- thesenames
-    }
-  }
-  return(retList[[1]])
+  mat = .addDimnames(retList, length(i), length(j), drop)
+  return(mat)
 }
 
 # Function contributed by Peter Haverty at Genentech.
@@ -315,26 +306,14 @@ GetCols.bm <- function(x, j, drop=TRUE)
                  "columns of the matrix."))
     j <- which(j)
   }
-
+  
   tempj <- .Call("CCleanIndices", as.double(j), as.double(ncol(x)))
   if (is.null(tempj[[1]])) stop("Illegal column index usage in extraction.\n")
   if (tempj[[1]]) j <- tempj[[2]]
-
+  
   retList <- .Call("GetMatrixCols", x@address, as.double(j))
-
-  dimnames(retList[[1]]) <- list( retList[[2]], retList[[3]] )
-  if (drop) {
-    if (any(dim(retList[[1]])==1)) {
-      if (dim(retList[[1]])[1]!=1 || dim(retList[[1]])[2]!=1) {
-        if (dim(retList[[1]])[1]==1) {
-          thesenames <- retList[[3]]
-        } else thesenames <- retList[[2]]
-      } else thesenames <- NULL
-      retList[[1]] = as.vector(retList[[1]])
-      names(retList[[1]]) <- thesenames
-    }
-  }
-  return(retList[[1]])
+  mat = .addDimnames(retList, nrow(x), length(j), drop)
+  return(mat)
 }
 
 GetRows.bm <- function(x, i, drop=TRUE)
@@ -354,39 +333,15 @@ GetRows.bm <- function(x, i, drop=TRUE)
   if (tempi[[1]]) i <- tempi[[2]]
 
   retList <- .Call("GetMatrixRows", x@address, as.double(i))
-
-  dimnames(retList[[1]]) <- list( retList[[2]], retList[[3]] )
-  if (drop) {
-    if (any(dim(retList[[1]])==1)) {
-      if (dim(retList[[1]])[1]!=1 || dim(retList[[1]])[2]!=1) {
-        if (dim(retList[[1]])[1]==1) {
-          thesenames <- retList[[3]]
-        } else thesenames <- retList[[2]]
-      } else thesenames <- NULL
-      retList[[1]] = as.vector(retList[[1]])
-      names(retList[[1]]) <- thesenames
-    }
-  }
-  return(retList[[1]])
+  mat = .addDimnames(retList, length(i), ncol(x), drop)
+  return(mat)
 }
 
 GetAll.bm <- function(x, drop=TRUE)
 {
   retList <- .Call("GetMatrixAll", x@address)
-
-  dimnames(retList[[1]]) <- list( retList[[2]], retList[[3]] )
-  if (drop) {
-    if (any(dim(retList[[1]])==1)) {
-      if (dim(retList[[1]])[1]!=1 || dim(retList[[1]])[2]!=1) {
-        if (dim(retList[[1]])[1]==1) {
-          thesenames <- retList[[3]]
-        } else thesenames <- retList[[2]]
-      } else thesenames <- NULL
-      retList[[1]] = as.vector(retList[[1]])
-      names(retList[[1]]) <- thesenames
-    }
-  }
-  return(retList[[1]])
+  mat = .addDimnames(retList, nrow(x), ncol(x), drop)
+  return(mat)
 }
 
 setMethod("[",
@@ -980,13 +935,14 @@ setGeneric('read.big.matrix',
   function(filename, sep=',', header=FALSE, col.names=NULL, row.names=NULL, 
            has.row.names=FALSE, ignore.row.names=FALSE, type=NA, skip=0, 
            separated=FALSE, backingfile=NULL, backingpath=NULL, 
-           descriptorfile=NULL, extraCols=NULL, shared=TRUE) 
+           descriptorfile=NULL, binarydescriptor=FALSE, extraCols=NULL,
+           shared=TRUE) 
   standardGeneric('read.big.matrix'))
 
 setMethod('read.big.matrix', signature(filename='character'),
   function(filename, sep, header, col.names, row.names, has.row.names, 
            ignore.row.names, type, skip, separated, backingfile, backingpath, 
-           descriptorfile, extraCols, shared=TRUE)
+           descriptorfile, binarydescriptor, extraCols, shared=TRUE)
   {
     if (!is.logical(header))
       stop("header argument must be logical")
@@ -1074,7 +1030,8 @@ setMethod('read.big.matrix', signature(filename='character'),
                          dimnames=list(rowNames, colNames), init=NULL, 
                          separated=separated, backingfile=backingfile,
                          backingpath=backingpath,
-                         descriptorfile=descriptorfile, shared=TRUE)
+                         descriptorfile=descriptorfile,
+                         binarydescriptor=binarydescriptor, shared=TRUE)
 
     # has.row.names indicates whether or not there are row names;
     # we take ignore.row.names from the user, but pass (essentially)
@@ -1161,7 +1118,8 @@ cleanuprows <- function(rows=NULL, nr=NULL, rownames=NULL) {
 deepcopy <- function(x, cols=NULL, rows=NULL, 
                      y=NULL, type=NULL, separated=NULL,
                      backingfile=NULL, backingpath=NULL,
-                     descriptorfile=NULL, shared=TRUE)
+                     descriptorfile=NULL, binarydescriptor=FALSE,
+                     shared=TRUE)
 {
   cols <- cleanupcols(cols, ncol(x), colnames(x))
   rows <- cleanuprows(rows, nrow(x), rownames(x))
@@ -1178,7 +1136,8 @@ deepcopy <- function(x, cols=NULL, rows=NULL,
     y <- big.matrix(nrow=length(rows), ncol=length(cols), type=type, init=NULL,
                   dimnames=dimnames(x), separated=separated,
                   backingfile=backingfile, backingpath=backingpath,
-                  descriptorfile=descriptorfile, shared)
+                  descriptorfile=descriptorfile,
+                  binarydescriptor=binarydescriptor, shared)
   }
   if (is.big.matrix(x) && is.big.matrix(y))
     .Call("CDeepCopy", x@address, y@address, as.double(rows), as.double(cols), 
@@ -1241,7 +1200,7 @@ filebacked.big.matrix <- function(nrow, ncol,
                                   type=options()$bigmemory.default.type,
                                   init=NULL, dimnames=NULL, separated=FALSE,
                                   backingfile=NULL, backingpath=NULL, 
-                                  descriptorfile=NULL)
+                                  descriptorfile=NULL, binarydescriptor=FALSE)
 {
   if (nrow < 1 | ncol < 1)
     stop('A big.matrix must have at least one row and one column')
@@ -1311,7 +1270,12 @@ filebacked.big.matrix <- function(nrow, ncol,
   if (!anon.backing)
   {
     descriptorfilepath <- file.path(backingpath, descriptorfile) 
-    dput(describe(x), descriptorfilepath)
+    if(binarydescriptor)
+    {
+      saveRDS(describe(x), file=descriptorfilepath)
+    } else {
+      dput(describe(x), descriptorfilepath)
+    }
   }
   return(x)
 }
@@ -1382,7 +1346,7 @@ setMethod('attach.resource', signature(obj='character'),
       stop( paste("The file", fileWithPath, "could not be found") )
     if (fi$isdir)
       stop( fileWithPath, "is a directory" )
-    info <- dget(fileWithPath)
+    info <- tryCatch(readRDS(file=fileWithPath), error=function(er){return(dget(fileWithPath))})
     return(attach.resource(info, path=path))
   })
 
@@ -1491,11 +1455,13 @@ setMethod('file.name', signature(x='big.matrix'),
   })
 
 transpose.big.matrix <- function(x, backingfile=NULL,
-                     backingpath=NULL, descriptorfile=NULL, shared=TRUE) {
+                     backingpath=NULL, descriptorfile=NULL,
+                     binarydescriptor=FALSE, shared=TRUE) {
   temp <- big.matrix(nrow=ncol(x), ncol=nrow(x), type=typeof(x),
     dimnames=dimnames(x)[[2:1]], separated=is.separated(x),
     backingfile=backingfile, backingpath=backingpath, 
-    descriptorfile=descriptorfile, shared=TRUE)
+    descriptorfile=descriptorfile, binarydescriptor=binarydescriptor,
+    shared=TRUE)
 
   for (i in 1:nrow(x)) {
     temp[,i] <- x[i,]
@@ -1617,4 +1583,26 @@ getCType <- function(x) {
     stop("getCType takes a big.matrix as an argument.")
 
   return(.Call("CGetType", x@address, PACKAGE="bigmemory"))
+}
+
+.addDimnames <- function(retList, nrow, ncol, drop) {
+  if (drop && !is.matrix(retList[[1]]) ) {
+    if (length(retList[[1]]) > 1) {
+      if (ncol == 1) {
+        thesenames <- retList[[2]]
+      } else if (nrow == 1)
+        thesenames <- retList[[3]]
+    } else {
+      thesenames <- NULL
+    }
+    if (!is.null(thesenames)) {
+      names(retList[[1]]) <- thesenames
+    }
+  } else {
+    if (!is.matrix(retList[[1]])) { retList[[1]] = matrix(retList[[1]], nrow=nrow, ncol=ncol) }
+    if (!is.null(retList[[2]]) || !is.null(retList[[3]])) {
+      dimnames(retList[[1]]) <- list( retList[[2]], retList[[3]] )
+    }
+  }
+  return(retList[[1]])
 }

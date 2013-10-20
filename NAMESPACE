@@ -1,4 +1,4 @@
-import(methods, bigmemory.sri)
+import(methods, bigmemory.sri, BH)
 importFrom(utils, head, tail)
 
 exportClasses(big.matrix, big.matrix.descriptor)
@@ -7,7 +7,7 @@ export(big.matrix,
        filebacked.big.matrix,
        attach.big.matrix,
        sub.big.matrix,
-       deepcopy, morder, mpermute, is.nil, getCType)
+       deepcopy, morder, mpermute, is.nil)
 
 exportMethods("[", "[<-",
               dimnames,
