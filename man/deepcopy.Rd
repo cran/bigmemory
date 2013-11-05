@@ -8,7 +8,7 @@ new copy optionally filebacked.
 \usage{
 deepcopy(x, cols = NULL, rows = NULL, y = NULL, type = NULL, 
   separated = NULL, backingfile = NULL, backingpath = NULL,
-  descriptorfile = NULL, shared=TRUE)
+  descriptorfile = NULL, binarydescriptor=FALSE, shared=TRUE)
 }
 \arguments{
   \item{x}{a \code{\link{big.matrix}}.}
@@ -20,6 +20,7 @@ deepcopy(x, cols = NULL, rows = NULL, y = NULL, type = NULL,
   \item{backingfile}{the root name for the file(s) for the cache of \code{x}.}
   \item{backingpath}{the path to the directory containing the file-backing cache.}
   \item{descriptorfile}{we recommend specifying this for file-backing.}
+  \item{binarydescriptor}{the flag to specify if the binary RDS format should be used for the backingfile description, for subsequent use with \code{\link{attach.big.matrix}}; if \code{NULL} of \code{FALSE}, the \code{dput()} file format is used.}
   \item{shared}{\code{TRUE} by default, and always \code{TRUE} if the \code{big.matrix} is file-backed.  For a non-filebacked \code{big.matrix}, \code{shared=FALSE} uses non-shared memory, which can be more stable for large (say, >50\% of RAM) objects.  Shared memory allocation can sometimes fail in such cases due to exhausted shared-memory resources in the system.}
 }
 \details{

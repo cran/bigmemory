@@ -15,8 +15,8 @@ read.big.matrix(filename, sep = ',', header = FALSE,
                 has.row.names=FALSE, ignore.row.names=FALSE,
                 type = NA, skip = 0, separated = FALSE,
                 backingfile = NULL, backingpath = NULL,
-                descriptorfile = NULL, extraCols = NULL,
-                shared=TRUE)
+                descriptorfile = NULL, binarydescriptor=FALSE,
+                extraCols = NULL, shared=TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -34,6 +34,7 @@ read.big.matrix(filename, sep = ',', header = FALSE,
   \item{backingfile}{the root name for the file(s) for the cache of \code{x}.}
   \item{backingpath}{the path to the directory containing the file backing cache.}
   \item{descriptorfile}{the file to be used for the description of the filebacked matrix.}
+  \item{binarydescriptor}{the flag to specify if the binary RDS format should be used for the backingfile description, for subsequent use with \code{\link{attach.big.matrix}}; if \code{NULL} of \code{FALSE}, the \code{dput()} file format is used.}
   \item{extraCols}{the optional number of extra columns to be appended to the matrix for future use.}
   \item{shared}{if \code{TRUE}, the resulting \code{big.matrix} can be
 shared across processes.}

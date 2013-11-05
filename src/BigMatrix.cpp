@@ -1080,7 +1080,8 @@ bool FileBackedBigMatrix::flush()
   {
     for (i=0; i < _dataRegionPtrs.size(); ++i)
     {
-      if ( !(_dataRegionPtrs[i])->flush() ) return false;
+      // Perform a synchronous flush.
+      if ( !(_dataRegionPtrs[i])->flush(0, 0, false) ) return false;
     }
   }
   catch(std::exception &e)
