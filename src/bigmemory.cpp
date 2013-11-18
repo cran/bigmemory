@@ -397,13 +397,12 @@ SEXP GetMatrixRows( BigMatrix *pMat, double NA_C, double NA_R,
   SET_VECTOR_ELT( ret, 2, NULL_USER_OBJECT );
   SEXP retMat;
   if (numCols == 1 || numRows == 1) {
-    retMat = PROTECT( Rf_allocVector(sxpType, numCols) );
+    retMat = PROTECT( Rf_allocVector(sxpType, numCols*numRows) );
   } else {
     retMat = PROTECT( Rf_allocMatrix(sxpType, numRows, numCols) );
   }
   ++protectCount;
   SET_VECTOR_ELT(ret, 0, retMat);
-  //SEXP ret = PROTECT( new_vec(numCols*numRows) );
   RType *pRet = vec_ptr(retMat);
   CType *pColumn = NULL;
   index_type k=0;
@@ -420,8 +419,8 @@ SEXP GetMatrixRows( BigMatrix *pMat, double NA_C, double NA_R,
       else
       {
         pRet[k] = (pColumn[static_cast<index_type>(pRows[j])-1] == 
-                   static_cast<CType>(NA_C)) ?  static_cast<RType>(NA_R) : 
-                   (static_cast<RType>(pColumn[static_cast<index_type>(pRows[j])-1]));
+          static_cast<CType>(NA_C)) ?  static_cast<RType>(NA_R) : 
+          (static_cast<RType>(pColumn[static_cast<index_type>(pRows[j])-1]));
       }
       ++k;
     }
@@ -476,7 +475,7 @@ SEXP GetMatrixCols( BigMatrix *pMat, double NA_C, double NA_R,
   SET_VECTOR_ELT( ret, 2, NULL_USER_OBJECT );
   SEXP retMat;
   if (numCols == 1 || numRows == 1) {
-    retMat = PROTECT( Rf_allocVector(sxpType, numRows) );
+    retMat = PROTECT( Rf_allocVector(sxpType, numRows*numCols) );
   } else {
     retMat = PROTECT( Rf_allocMatrix(sxpType, numRows, numCols) );
   }

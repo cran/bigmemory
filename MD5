@@ -1,4 +1,4 @@
-b8e4b5fdbae398e3e4fc480a2c7380f2 *DESCRIPTION
+f3bd427605effdb296fdecf8b67ba320 *DESCRIPTION
 71c8435ab54daded158e10970d711d65 *NAMESPACE
 19a4af18a663ecfcc2d1767f23e617b7 *NEWS
 4be3f82468cd0e6c80c32998e5de8f0e *R/bigmemory.R
@@ -22,7 +22,7 @@ a2e4c77772b0ab4207a34b65b0e9dfef *man/attach.big.matrix.Rd
 ca3dc672622e66cf3d49eb60672829ab *man/big.matrix-class.Rd
 4083daf862bae8d03168396dc972cbda *man/big.matrix.Rd
 6bc2fbcb851ad8359c0a69a82bbc820e *man/big.matrix.descriptor-class.Rd
-d369178a0449bd084311d10ebf6b1916 *man/bigmemory-package.Rd
+e3a6d75ae79cdb7d647655edf9041e25 *man/bigmemory-package.Rd
 aca89d0135ac3484d630cb9c658ede3b *man/deepcopy.Rd
 91d5ef732fed81c80fda1ed2e1db9fcb *man/flush.Rd
 9c9d24de0d573fe6476559add3804ef1 *man/morder.Rd
@@ -30,9 +30,8 @@ aca89d0135ac3484d630cb9c658ede3b *man/deepcopy.Rd
 2148a83cbb99473e33443f33d822718d *man/mwhich.Rd
 260008a168070e1e32340cd5323c1efa *man/sub.big.matrix.Rd
 477db9207dfef03cda6b4a3e3228e61c *man/write.big.matrix.Rd
-fecb9e5ba1e0c87a3e95b9bf989d5f27 *src/BigMatrix.cpp
-32adb5b7b9e415d2ba66c7bcf7b99b45 *src/Makevars
+975778ed2287c0e28fdf39832f6d2dd0 *src/BigMatrix.cpp
 81e6f49c7f623fb97376bd4b7132b176 *src/SharedCounter.cpp
-dbe858bdc5b0baf6b7fa0a52c2d4603b *src/bigmemory.cpp
+7dabd06500c6488e79750faa06f8d2a0 *src/bigmemory.cpp
 22c95f5cedf87c7e2d60f346ff1c0b8a *src/deepcopy.cpp
 aa45f3daf2002b566c1cb7fdfd5ba767 *src/util.cpp

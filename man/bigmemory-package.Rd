@@ -21,8 +21,8 @@ work both with \code{big.matrix} and native \R \code{matrix} objects.
 \tabular{ll}{
 Package: \tab bigmemory\cr
 Type: \tab Package\cr
-Version: \tab 4.4.5\cr
-Date: \tab 2013-10-20\cr
+Version: \tab 4.4.6\cr
+Date: \tab 2013-11-18\cr
 License: \tab LGPL-3\cr
 Copyright: \tab (C) 2013 Michael J. Kane and John W. Emerson\cr
 URL: \tab http://www.bigmemory.org\cr

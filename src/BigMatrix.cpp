@@ -215,7 +215,7 @@ void* CreateSharedSepMatrix( const std::string &sharedName,
         shared_memory_object::remove( (sharedName+"_column_"+ttos(j)).c_str());
       }
       delete pMat;
-      return false;
+      return NULL;
     }
   }
   return reinterpret_cast<void*>(pMat);
