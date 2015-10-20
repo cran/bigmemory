@@ -2,6 +2,10 @@
 #ifndef BIGMATRIX_H
 #define BIGMATRIX_H
 
+#ifdef INT
+#undef INT
+#endif
+
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/noncopyable.hpp>
@@ -23,13 +27,13 @@ class BigMatrix : public boost::noncopyable
 {
   // Public types
   public:
-    enum MatrixType {CHAR=1, SHORT=2, INT=3, DOUBLE=4, COMPLEX=5};
+    enum MatrixType {CHAR=1, SHORT=2, INT=3, DOUBLE=4, COMPLEX=5, FLOAT=6};
 
   // Constructor and Destructor
   public:
     BigMatrix():_ncol(0),_nrow(0), _totalRows(0), _totalCols(0),
                 _colOffset(0), _rowOffset(0),_matType(0), _pdata(NULL),
-                _sepCols(false), _readOnly(false){}
+                _sepCols(false), _readOnly(false), _allocationSize(0){}
     virtual ~BigMatrix(){}
 
     // The next function returns the matrix data.  It will generally be passed
@@ -152,6 +156,8 @@ class BigMatrix : public boost::noncopyable
     }
   
     void* data_ptr() {return _pdata;}
+  
+    const index_type allocation_size() const {return _allocationSize;}
 
   // Data Members
 
@@ -170,6 +176,7 @@ class BigMatrix : public boost::noncopyable
     Names _colNames;
     Names _rowNames;
     bool _readOnly;
+    index_type _allocationSize;
 };
 
 class LocalBigMatrix : public BigMatrix
@@ -244,12 +251,13 @@ class FileBackedBigMatrix : public SharedBigMatrix
       const index_type numCol, const int matrixType, const bool sepCols,
       const bool readOnly=false);
     std::string file_name() const {return _fileName;}
+    std::string file_path() const {return _filePath;}
     bool flush();
   protected:
     virtual bool destroy();
 
   protected:
-    std::string _fileName;
+    std::string _fileName, _filePath;
 };
 
 #endif // BIGMATRIX_H

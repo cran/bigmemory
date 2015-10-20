@@ -1,25 +1,26 @@
 Package: bigmemory
-Version: 4.4.6
-Date: 2013-11-18
-Title: Manage massive matrices with shared memory and memory-mapped
-        files
-Author: Michael J. Kane <kaneplusplus@gmail.com>, John W. Emerson <jayemerson@gmail.com>, and Peter Haverty <haverty.peter@gene.com>
+Version: 4.5.8
+Date: 2015-10-19
+Title: Manage Massive Matrices with Shared Memory and Memory-Mapped
+        Files
+Author: Michael J. Kane <kaneplusplus@gmail.com>, John W. Emerson <jayemerson@gmail.com>, Peter Haverty <haverty.peter@gene.com>, and Charles Determan Jr. <cdetermanjr@gmail.com>
 Maintainer: Michael J. Kane <bigmemoryauthors@gmail.com>
-Contact: Mike and Jay <bigmemoryauthors@gmail.com>
-Depends: methods, utils, bigmemory.sri, BH
+Contact: Mike, Jay, and Charles <bigmemoryauthors@gmail.com>
+Depends: methods, utils, bigmemory.sri
+Imports: Rcpp
 Enhances: biganalytics, bigtabulate, synchronicity
-LinkingTo: BH
-Suggests: RUnit
+LinkingTo: BH, Rcpp
 Description: Create, store, access, and manipulate massive matrices.
   Matrices are allocated to shared memory and may use memory-mapped
-  files.  Packages biganalytics, bigtabulate, synchronicity, and
-  bigalgebra provide advanced functionality.
-OS_type: unix
-License: LGPL-3
-Copyright: (C) 2013 John W. Emerson, Michael J. Kane, and Peter Haverty
+  files.  Packages 'biganalytics', 'bigtabulate', 'synchronicity', and
+  'bigalgebra' provide advanced functionality.
+License: LGPL-3 | Apache License 2.0
 URL: http://www.bigmemory.org
 LazyLoad: yes
-Packaged: 2013-11-18 14:45:34 UTC; ripley
+Biarch: yes
+VignetteBuilder: knitr
+Suggests: knitr, testthat
 NeedsCompilation: yes
+Packaged: 2015-10-19 17:06:06 UTC; mike
 Repository: CRAN
-Date/Publication: 2013-11-18 15:47:41
+Date/Publication: 2015-10-20 08:17:15

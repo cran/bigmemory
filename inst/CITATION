@@ -1,4 +1,4 @@
-citHeader("To cite <PACKAGE> in publications use:")
+citHeader("To cite bigmemory in publications use:")
 
 citEntry(entry = "Article",
   title        = "Scalable Strategies for Computing with Massive Data",
