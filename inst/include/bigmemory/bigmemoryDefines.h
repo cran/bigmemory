@@ -8,6 +8,7 @@
 #if __STDC_VERSION__ >= 199901L
   #define HAVE_COMPLEX
   #include <complex.h>
+  #undef I
 #else
   #undef HAVE_COMPLEX
 #endif 
@@ -18,11 +19,6 @@
   // We don't have 64-bit indexing.  Build with 32.
   typedef long index_type;
 #endif
-
-extern "C"
-{
-  #include <Rdefines.h>
-}
 
 #define NA_CHAR CHAR_MIN
 #define NA_SHORT SHRT_MIN

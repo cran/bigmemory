@@ -7,6 +7,8 @@
 #include <errno.h>
 #include <stdint.h>
 
+#include <Rcpp.h>
+
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/file_mapping.hpp>
 #include <boost/interprocess/mapped_region.hpp>
@@ -17,8 +19,6 @@
 #include <boost/interprocess/sync/named_mutex.hpp>
 
 #include "bigmemory/BigMatrix.h"
-
-#include <Rcpp.h>
 
 #define COND_EXCEPTION_PRINT(bYes)                \
   if (bYes)                                       \
@@ -185,7 +185,11 @@ bool SharedBigMatrix::create_uuid()
 {
   try
   {
+#ifdef DARWIN
+    size_t string_len = 10;
+#else
     size_t string_len = 24;
+#endif
     std::string letters("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
     Rcpp::NumericVector inds=
       Rcpp::runif(string_len, -0.49, letters.size()-0.51);
@@ -293,12 +297,13 @@ bool SharedMemoryBigMatrix::create(const index_type numRow,
         _sharedName=_uuid;
     #ifndef INTERLOCKED_EXCHANGE_HACK
         // Create the associated mutex and counter;
-        named_mutex mutex(open_or_create, (_sharedName+"_counter_mutex").c_str());
+        named_mutex mutex(create_only, (_sharedName+"_bigmemory_counter_mutex").c_str());
         mutex.lock();
     #endif
         _counter.init( _sharedName+"_counter" );
     #ifndef INTERLOCKED_EXCHANGE_HACK
         mutex.unlock();
+        named_mutex::remove((_sharedName+"_bigmemory_counter_mutex").c_str());
     #endif
         if (_sepCols)
         {
@@ -367,7 +372,6 @@ bool SharedMemoryBigMatrix::create(const index_type numRow,
           throw e;
         }
         _counter.reset();
-        named_mutex::remove((_sharedName+"_counter_mutex").c_str());
  
       }
     } while(++retry < 200);
@@ -455,12 +459,13 @@ bool SharedMemoryBigMatrix::connect( const std::string &uuid,
 
 #ifndef INTERLOCKED_EXCHANGE_HACK
     // Attach to the associated mutex and counter;
-    named_mutex mutex(open_or_create, (_sharedName+"_counter_mutex").c_str());
+    named_mutex mutex(open_or_create, (_sharedName+"_bigmemory_counter_mutex").c_str());
     mutex.lock();
 #endif
     _counter.init( _sharedName+"_counter" );
 #ifndef INTERLOCKED_EXCHANGE_HACK
     mutex.unlock();
+    named_mutex::remove((_sharedName+"_bigmemory_counter_mutex").c_str());
 #endif
     if (_sepCols)
     {
@@ -677,7 +682,7 @@ bool SharedMemoryBigMatrix::destroy()
 {
   using namespace boost::interprocess;
 #ifndef INTERLOCKED_EXCHANGE_HACK
-  named_mutex mutex(open_or_create, (_sharedName+"_counter_mutex").c_str());
+  named_mutex mutex(open_or_create, (_sharedName+"_bigmemory_counter_mutex").c_str());
   mutex.lock();
 #endif
   bool destroyThis = (1==_counter.get()) ? true : false;
@@ -709,7 +714,7 @@ bool SharedMemoryBigMatrix::destroy()
     mutex.unlock();
     if (destroyThis)
     {
-      named_mutex::remove((_sharedName+"_counter_mutex").c_str());
+      named_mutex::remove((_sharedName+"_bigmemory_counter_mutex").c_str());
     }
 #endif
     return true;
@@ -721,7 +726,7 @@ bool SharedMemoryBigMatrix::destroy()
     mutex.unlock();
     if (destroyThis)
     {
-      named_mutex::remove((_sharedName+"_counter_mutex").c_str());
+      named_mutex::remove((_sharedName+"_bigmemory_counter_mutex").c_str());
     }
 #endif
     return false;

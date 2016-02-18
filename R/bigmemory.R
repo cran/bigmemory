@@ -496,7 +496,8 @@ GetAll.bm <- function(x, drop=TRUE)
   return(mat)
 }
 
-#' @title Extract or Replace big.matrix elements
+#' @title Extract or Replace 
+#' @description Extract or replace big.matrix elements
 #' @name Extract,big.matrix
 #' @param x A \code{big.matrix object}
 #' @param i Indices specifying the rows
@@ -614,7 +615,7 @@ SetElements.bm <- function(x, i, j, value)
                 "options(bigmemory.typecast.warning=FALSE)\n", sep=''))
   }
 
-  totalts <- length(i) * length(j)
+  totalts <- max(as.double(length(i)), as.double(length(j)))
   # If we are assigning from a matrix, make sure the dimensions agree.
   if (is.matrix(value))
   {
@@ -987,9 +988,8 @@ setMethod('typeof', signature(x="big.matrix"),
   )
 
 
-# Little function to test if a value is
-# the 'R' representation of float/single value
 #' @title Check if Float
+#' @description Check to see if the elements of a big.matrix object are floats.
 #' @param x An object to be evaluated if float
 #' @export
 setGeneric('is.float', function(x){
@@ -1391,9 +1391,14 @@ setMethod('read.big.matrix', signature(filename='character'),
     # has.row.names indicates whether or not there are row names;
     # we take ignore.row.names from the user, but pass (essentially)
     # use.row.names (which is !ignore.row.names) to C:
-    ReadMatrix(filename, bigMat@address, 
-          as.integer(skip+headerOffset), as.double(numRows), 
-          as.double(numCols), as.character(sep), as.logical(has.row.names),
+    ReadMatrix(
+          as.character(filename), 
+          bigMat@address, 
+          as.double(skip+headerOffset), 
+          as.double(numRows), 
+          as.double(numCols), 
+          as.character(sep), 
+          as.logical(has.row.names),
           as.logical(!ignore.row.names))
 
     return(bigMat)
@@ -1670,10 +1675,13 @@ setMethod('attach.resource', signature(obj='big.matrix.descriptor'),
     
     if (info$sharedType == 'SharedMemory')
     {
-      address <- CAttachSharedBigMatrix(info$sharedName, 
-        info$totalRows, info$totalCols, as.character(info$rowNames), 
-        as.character(info$colNames), as.integer(typeLength), info$separated,
-        readOnly)
+      address <- CAttachSharedBigMatrix(as.character(info$sharedName), 
+        as.double(info$totalRows), 
+        as.double(info$totalCols), 
+        as.character(info$rowNames), 
+        as.character(info$colNames), as.integer(typeLength), 
+        as.logical(info$separated),
+        as.logical(readOnly))
     }
     else
     {
@@ -1695,9 +1703,15 @@ setMethod('attach.resource', signature(obj='big.matrix.descriptor'),
         }
       }
       address <- CAttachFileBackedBigMatrix(
-        info$filename, path, info$totalRows, info$totalCols, 
-        as.character(info$rowNames), as.character(info$colNames), 
-        as.integer(typeLength), info$separated, readOnly)
+        as.character(info$filename), 
+        as.character(path), 
+        as.double(info$totalRows), 
+        as.double(info$totalCols), 
+        as.character(info$rowNames), 
+        as.character(info$colNames), 
+        as.integer(typeLength), 
+        as.logical(info$separated), 
+        as.logical(readOnly))
     }
     if (!is.null(address)) 
     {

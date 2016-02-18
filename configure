@@ -8,6 +8,7 @@
 # small.  Hopefully BOOST will catch up, soon.
 
 FLAGS="PKG_CPPFLAGS=-I../inst/include"
+
 LIBS=""
 
 echo -n "  checking for Sun Studio compiler..."
