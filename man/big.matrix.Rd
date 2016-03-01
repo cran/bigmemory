@@ -220,8 +220,7 @@ x[,]
 # second R process would give access to the same object in memory.
 # Please see the package vignette for real examples.
 
-z <- big.matrix(3, 3, type='integer', init=3, backingfile="z.back",
-                descriptorfile="z.desc")
+z <- big.matrix(3, 3, type='integer', init=3)
 z[,]
 dim(z)
 z[1,1] <- 2
@@ -235,25 +234,6 @@ z
 y[1,1] <- -100
 y[,]
 z[,]
-rm("z", "y", "zz")
-unlink(c("z.back", "z.desc"))
-# A short filebacked example, showing the creation of associated files:
-
-files <- dir()
-files[grep("example.bin", files)]
-
-z <- filebacked.big.matrix(3, 3, type='integer', init=123,
-                           backingfile="example.bin",
-                           descriptorfile="example.desc",
-                           dimnames=list(c('a','b','c'), c('d', 'e', 'f')))
-z[,]
-files <- dir()
-files[grep("example.bin", files)]
-zz <- attach.big.matrix("example.desc")
-zz[,]
-zz[1,1] <- 0
-zzz <- attach.big.matrix(describe(z))
-zzz[,]
 }
 \author{
 John W. Emerson and Michael J. Kane 

@@ -58,6 +58,8 @@ big.matrix <- function(nrow, ncol, type=options()$bigmemory.default.type,
                        backingfile=NULL, backingpath=NULL, descriptorfile=NULL,
                        binarydescriptor=FALSE, shared=TRUE)
 {
+  if (shared && is.null(backingfile) && (Sys.info()['sysname'] == "Darwin")) 
+    backingfile = ""
   if (!is.null(backingfile))
   {
     if (!shared) warning("All filebacked objects are shared.")
@@ -86,17 +88,9 @@ big.matrix <- function(nrow, ncol, type=options()$bigmemory.default.type,
   }
   if (is.null(init)) init <- NA
   if (shared) {
-    # There seems to be a recent problem with shared memory in OSX.
-    # So, we will create an anonymous filebacked big matrix in place of 
-    # a shared big matrix.
-    if (Sys.info()['sysname'] != "Darwin") {
       address <- CreateSharedMatrix(as.double(nrow),
                   as.double(ncol),as.character(colnames),as.character(rownames),
                   as.integer(typeVal), as.double(init), as.logical(separated))
-    } else {
-      return(filebacked.big.matrix(nrow=nrow, ncol=ncol, type=type, init=init,
-             dimnames=dimnames, separated=separated, backingfile=""))
-    }
   } else {
     address <- CreateLocalMatrix(as.double(nrow),
                 as.double(ncol), as.character(colnames), as.character(rownames),
@@ -146,8 +140,9 @@ filebacked.big.matrix <- function(nrow, ncol,
     if (anon.backing)
     {
         backingfile <- tempfile()
-        backingpath <- dirname(backingfile)
-        backingfile <- basename(backingfile)
+        backingpath = ""
+#        backingpath <- dirname(backingfile)
+#        backingfile <- basename(backingfile)
     }
     if (is.null(descriptorfile) && !anon.backing) 
     {
@@ -161,19 +156,23 @@ filebacked.big.matrix <- function(nrow, ncol,
         stop(paste("The path to the descriptor and backing file are",
                    "specified with the backingpath option"))
     }
-    if (is.null(backingpath)) backingpath <- '.'
+    if (is.null(backingpath)) backingpath <- ''
     backingpath <- path.expand(backingpath)
-    backingpath <- file.path(backingpath, '.')
-    backingpath <- substr( backingpath, 1, nchar(backingpath)-1 )
-    
-    if(file.exists(file.path(backingpath, backingfile))){
-        stop("Backing file already exists! Either remove or specify
-             different backing file name")
+    if (backingpath != "") {
+      backingpath <- paste(backingpath, '', sep=.Platform$file.sep)
     }
     
+    if(file.exists(paste(backingpath, backingfile, sep=.Platform$file.sep))){
+        stop("Backing file already exists! Either remove or specify
+             different backing file")
+    }
+    if (backingpath == "" && dirname(backingfile) == ".") 
+      backingpath = paste(getwd(), "", sep=.Platform$file.sep)
+
     address <- CreateFileBackedBigMatrix(as.character(backingfile), 
-                     as.character(backingpath), as.double(nrow), as.double(ncol), 
-                     as.character(colnames), as.character(rownames), as.integer(typeVal), 
+                     as.character(backingpath), as.double(nrow), 
+                     as.double(ncol), as.character(colnames), 
+                     as.character(rownames), as.integer(typeVal), 
                      as.double(init), as.logical(separated))
     if (is.null(address))
     {
@@ -193,7 +192,8 @@ filebacked.big.matrix <- function(nrow, ncol,
     }
     if (!anon.backing)
     {
-        descriptorfilepath <- file.path(backingpath, descriptorfile) 
+        descriptorfilepath <- paste(backingpath, descriptorfile, 
+                                    sep=.Platform$file.sep)
         if(binarydescriptor)
         {
             saveRDS(describe(x), file=descriptorfilepath)
@@ -1621,28 +1621,41 @@ setMethod('attach.resource', signature(obj='character'),
   function(obj, ...)
   {
     path <- list(...)[['path']]
-    if (is.null(path))
-    {
-      path <- '.'
-    }
-    path <- path.expand(path)
+    if (!is.null(path) && path != "") 
+      path = paste(path.expand(path), "", sep=.Platform$file.sep)
     if (basename(obj) != obj)
     {
-      if (path != ".")
+      if (!is.null(path) != "")
         warning(paste("Two paths were specified in attach.resource.",
           "The one associated with the file will be used.", sep="  "))
-      path <- dirname(obj)
-      obj <- basename(obj) 
+      fileWithPath = obj
+    } else {
+      if (!is.null(path) && path == "")
+        fileWithPath <- obj
+      else if (!is.null(path))
+        fileWithPath = paste(path, obj, sep=.Platform$file.sep)
+      else
+        fileWithPath = obj
     }
-    
-    fileWithPath <- file.path(path, obj)
     fi = file.info(fileWithPath)
     if (is.na(fi$isdir))
       stop( paste("The file", fileWithPath, "could not be found") )
     if (fi$isdir)
       stop( fileWithPath, "is a directory" )
     info <- tryCatch(readRDS(file=fileWithPath), error=function(er){return(dget(fileWithPath))})
-    return(attach.resource(info, path=path, ...))
+    
+    if (dirname(obj) != ".") {
+      new_path = dirname(obj)
+      if (Sys.info()['sysname'] == "Darwin") {
+        if (file.exists(info@description$filename)) {
+          new_path = dirname(info@description$filename)
+          info@description$filename = basename(info@description$filename)
+        }
+      }
+    }
+    else if (!is.null(path) && path != "") new_path = path
+    else new_path = path
+    return(attach.resource(info, path=new_path, ...))
   })
 
 #' @rdname big.matrix.descriptor-class
@@ -1651,10 +1664,6 @@ setMethod('attach.resource', signature(obj='big.matrix.descriptor'),
   function(obj, ...)
   {
     path <- list(...)[['path']]
-    if (is.null(path))
-    {
-      path <- '.'
-    }
     info <- description(obj)
     typeLength <- NULL
     if (info$type == 'char') typeLength <- 1
@@ -1664,17 +1673,6 @@ setMethod('attach.resource', signature(obj='big.matrix.descriptor'),
     if (info$type == 'double') typeLength <- 8
     if (is.null(typeLength)) 
       stop('invalid type')
-    path <- path.expand(path)
-    fi = file.info(path)
-    if (path != '.' && is.na(fi$isdir))
-      stop( paste("The directory", path, "could not be found") )
-    if (!is.na(fi$isdir) && !fi$isdir)
-      stop( paste(path, "is not a directory.") )
-    path = file.path(path, '.')
-    path <- substr(path, 1, nchar(path)-1)
-    if (substr(path, nchar(path), nchar(path)) == "/") {
-      path <- substr(path, 1, nchar(path)-1)
-    }
 
     readOnly <- ifelse( is.null(list(...)$readonly), FALSE, list(...)$readonly)
     if (!is.logical(readOnly)) {
@@ -1693,8 +1691,18 @@ setMethod('attach.resource', signature(obj='big.matrix.descriptor'),
     }
     else
     {
+      if (is.null(path) && dirname(info$filename) == ".") {
+        path <- getwd()  
+        path <- path.expand(path)
+        path <- paste(path, '', sep=.Platform$file.sep)
+      } else if (is.null(path) && dirname(info$filename) != ".") {
+        path = paste(dirname(info$filename), "", sep=.Platform$file.sep)
+        info$filename = basename(info$filename)
+      } else if(nchar(path) > 0) {
+        path = paste(path, "", sep=.Platform$file.sep)
+      }
       if (!info$separated) {
-        if (!file.exists(file.path(path, info$filename)))
+        if (!file.exists(paste(path, info$filename, sep=.Platform$file.sep)))
         {
           stop(paste("The backing file", paste(path, info$filename, sep=''),
             "could not be found"))
@@ -1703,9 +1711,10 @@ setMethod('attach.resource', signature(obj='big.matrix.descriptor'),
         # It's separated and we need to check for each column.
         for (i in 1:info$ncol) {
           fn <- paste(info$filename, "_column_", (i-1), sep='')
-          if (!file.exists(file.path(path, fn)))
+          if (!file.exists(paste(path, fn, sep=.Platform$file.sep)))
           {
-            stop(paste("The backing file", file.path(path, fn), 
+            stop(paste("The backing file", 
+                       paste(path, fn, sep=.Platform$file.sep), 
               "could not be found"))
           }
         }
