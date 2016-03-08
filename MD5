@@ -1,9 +1,9 @@
-5012cea2fc3d381f1ffd2e7de69b45ca *DESCRIPTION
+e1d2617b503654aa50c08e8aa0ff63cf *DESCRIPTION
 27d2978d60def090b3f1e4f668a9442d *NAMESPACE
 4edd605283eaf30b194bf8202c78b2c1 *NEWS
 7fa402f977578ce55b2da78e00ab2392 *R/RcppExports.R
-a2e8953457b854bc5d109af36cb69b6d *R/bigmemory.R
-36df338da5d6e311361845ca05169dfc *R/hello-bigmemory.R
+1f9c339dc685aa6a2f8903b98f9dc5d8 *R/bigmemory.R
+e980501350be9b8d78f1b93a030e0053 *R/hello-bigmemory.R
 08d8ac748bb99e6cd73cbc851ba24e6f *R/zzz.R
 e43b8e4e0d01c36bc12fbcddc0b3e21c *build/vignette.rds
 cff4b0071fbcb3165aaf35c802b46b34 *cleanup
@@ -26,7 +26,7 @@ ebfbef67e2b841f101b75c05150d24ac *man/as.big.matrix-methods.Rd
 fc34b384a6c2143f1dcaae5ee49415c2 *man/big.matrix-class.Rd
 a9084ce886669e186542aeb2f023d203 *man/big.matrix.Rd
 0cbf4de93298ec9a84c1de239d4cfb23 *man/big.matrix.descriptor-class.Rd
-92320c08b67dffd60aae774707370d79 *man/bigmemory-package.Rd
+218c63dee6a5607b7122dbf7f0743e28 *man/bigmemory-package.Rd
 54c8d471be764709cef5228611e4246b *man/deepcopy.Rd
 0305395ab2599c431f047e3da4c958b9 *man/dim-big.matrix-method.Rd
 57b5d61640a946fc0f40fb233a447a25 *man/dimnames-methods.Rd
@@ -44,7 +44,7 @@ f4646aa6f5721c126224080f1f3f4346 *man/mwhich.Rd
 a9a9a0fcbb7e84630d8c391399888f94 *man/sub.big.matrix.Rd
 fa6fa96d0e798daab57a55e64ab6f125 *man/typeof-big.matrix-method.Rd
 120e6b4ca2d2013d55b218670feade29 *man/write.big.matrix.Rd
-26e6b39618023ed019a12fd82a72845d *src/BigMatrix.cpp
+bcb015d8e95bca7f57c2abb9d40ac001 *src/BigMatrix.cpp
 a55f990cdca7b9de45640aa60febaecd *src/RcppExports.cpp
 81e6f49c7f623fb97376bd4b7132b176 *src/SharedCounter.cpp
 413896a4c2c39aefd3d384e531996d58 *src/bigmemory.cpp
@@ -54,10 +54,10 @@ b8c4d52de4096d181b7358e4c7c7698a *src/util.cpp
 6e5f5d153c3010b6afa65fd52e2fa24f *tests/testthat/test_create.R
 3e775cf62c31c20043a7694652daf8ab *tests/testthat/test_deepcopy.R
 2352ed49eb1d3901655fc857db7ab0d6 *tests/testthat/test_float_type.R
-bf94c4a03c6ffd3e51172c27162c48ae *tests/testthat/test_matrix_manips.R
+77bccefb28aacb9a675fab5325cc541d *tests/testthat/test_matrix_manips.R
 54ecbee0d9f3f5299cc5e59cb76061c3 *tests/testthat/test_misc.R
 79969a44ab389c029eb7e0e47fe0b343 *tests/testthat/test_morder.R
 de1ae509d7b275492703a1353912cb01 *tests/testthat/test_mwhich.R
 6eb85c09d04f838337900a4e57750da8 *tests/testthat/test_read.R
-ef3109fc1920a8d2ab7836d115e3f065 *tests/testthat/test_readonly.R
+80714f3b4b3abcbc2e31f0eaad48c111 *tests/testthat/test_readonly.R
 3d93d005184d93acf361658cf9051afa *vignettes/Overview.Rnw

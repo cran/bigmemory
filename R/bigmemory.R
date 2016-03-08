@@ -58,8 +58,6 @@ big.matrix <- function(nrow, ncol, type=options()$bigmemory.default.type,
                        backingfile=NULL, backingpath=NULL, descriptorfile=NULL,
                        binarydescriptor=FALSE, shared=TRUE)
 {
-  if (shared && is.null(backingfile) && (Sys.info()['sysname'] == "Darwin")) 
-    backingfile = ""
   if (!is.null(backingfile))
   {
     if (!shared) warning("All filebacked objects are shared.")
@@ -623,7 +621,7 @@ SetElements.bm <- function(x, i, j, value)
                 "options(bigmemory.typecast.warning=FALSE)\n", sep=''))
   }
 
-  totalts <- max(as.double(length(i)), as.double(length(j)))
+  totalts <- as.double(length(i)) * as.double(length(j))
   # If we are assigning from a matrix, make sure the dimensions agree.
   if (is.matrix(value))
   {
@@ -765,7 +763,7 @@ SetCols.bm <- function(x, j, value)
                 "options(bigmemory.typecast.warning=FALSE)\n", sep=''))
   }
 
-  totalts <- nrow(x) * length(j)
+  totalts <- as.double(nrow(x)) * as.double(length(j))
   # If we are assigning from a matrix, make sure the dimensions agree.
   if (is.matrix(value)){
     if (ncol(value) != length(j) | nrow(value) != nrow(x)) 
@@ -844,7 +842,7 @@ SetRows.bm <- function(x, i, value)
   # that we disable read locking before it is evaluated or we will
   # have a race condition.  - Jay and Mike.
 
-  totalts <- length(i) * ncol(x)
+  totalts <- as.double(length(i)) * as.double(ncol(x))
   # If we are assigning from a matrix, make sure the dimensions agree.
   if (is.matrix(value))
   {
@@ -906,7 +904,7 @@ SetAll.bm <- function(x, value)
                 "options(bigmemory.typecast.warning=FALSE)\n", sep=''))
   }
 
-  totalts <- nrow(x) * ncol(x)
+  totalts <- as.double(nrow(x)) * as.double(ncol(x))
   # If we are assigning from a matrix, make sure the dimensions agree.
   if (is.matrix(value))
   {
@@ -1646,12 +1644,6 @@ setMethod('attach.resource', signature(obj='character'),
     
     if (dirname(obj) != ".") {
       new_path = dirname(obj)
-      if (Sys.info()['sysname'] == "Darwin") {
-        if (file.exists(info@description$filename)) {
-          new_path = dirname(info@description$filename)
-          info@description$filename = basename(info@description$filename)
-        }
-      }
     }
     else if (!is.null(path) && path != "") new_path = path
     else new_path = path
