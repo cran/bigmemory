@@ -1,8 +1,8 @@
-f51cb5b0cbe08492052c7dc277eb7bde *DESCRIPTION
+4450c1e8bcad1631d46125214bb62b79 *DESCRIPTION
 8b9e12007e354ccc8f2d7a63a2f54531 *NAMESPACE
-49bb3f974e931153a4d2cf25a8cfa9de *NEWS
+0d6ab1d5288e982b8dab11b69ab99a26 *NEWS
 20b044de52e16b6a780602293346ad68 *R/RcppExports.R
-880b3d343eb617f0fa2f434862ed0591 *R/bigmemory.R
+045d8ea4f2f9a47003b2858f4f4cf9e2 *R/bigmemory.R
 b24807e2b216f51ee18a2838c24ccbd7 *R/hello-bigmemory.R
 84920654d0bd038e9743baaf9898b37f *R/zzz.R
 15ed3af0c7eb58a4a1f9447d4282ca8f *build/vignette.rds
@@ -12,7 +12,7 @@ fc5c8f75e424213609b3e3cd9b57f5bf *configure.win
 0cd9765e8adee62083d32a17a6b9aa07 *inst/CITATION
 f883e7fbbec7e35f5142805cd80548cf *inst/doc/Overview.R
 3d93d005184d93acf361658cf9051afa *inst/doc/Overview.Rnw
-42059e40367a57ac9017d3449f1d26c6 *inst/doc/Overview.pdf
+b2e74d7c06fd782b885baba175866d8f *inst/doc/Overview.pdf
 558ed71dd4adb6ecd1ec2ae0010a53b9 *inst/include/bigmemory/BigMatrix.h
 3b3220d76af2054057b4c9edda832f48 *inst/include/bigmemory/MatrixAccessor.hpp
 f7a48cd4c3554011d0d50f95cb8df982 *inst/include/bigmemory/SharedCounter.h
@@ -30,7 +30,7 @@ d3ca0f21b152d3529be2635b1b05e0a5 *man/bigmemory-package.Rd
 b8baee000113ab26109967872a8ab7d8 *man/deepcopy.Rd
 36010c143ec3470e149acd0578654442 *man/dim-big.matrix-method.Rd
 5839f793116726982274d12f63880a2b *man/dimnames-methods.Rd
-a648dde2531ab9f8d0c0e135cbf782a7 *man/extract-methods.Rd
+27661e9a332cd90adfec6d5f206253a3 *man/extract-methods.Rd
 18b29aab83adcd3dbaa5ff3eecb5d405 *man/flush-methods.Rd
 fd763376002487f37d89080ca3e2e154 *man/head-methods.Rd
 b522cb320ad634a1a82f58a51d17ec10 *man/is.float-numeric-method.Rd
@@ -51,7 +51,7 @@ e08a535b37c66801a7964260666bee6f *man/mwhich-methods.Rd
 22f6c68181a554386131fbf5fb6b6e49 *src/deepcopy.cpp
 b8c4d52de4096d181b7358e4c7c7698a *src/util.cpp
 2b4877ae1449175221f543146cdce8b5 *tests/testthat.R
-09f07a94b1938b1b2cacf06fac0f9b28 *tests/testthat/test_assignment.R
+97cbbe6a8d6ef68d75b622d5ec4ff6c9 *tests/testthat/test_assignment.R
 42624f362c5c8d64158c3c4d504cf823 *tests/testthat/test_attach_path.R
 6e5f5d153c3010b6afa65fd52e2fa24f *tests/testthat/test_create.R
 0f42da6d75e92a319fb36b4574492680 *tests/testthat/test_deepcopy.R
