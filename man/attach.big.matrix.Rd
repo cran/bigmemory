@@ -2,10 +2,10 @@
 % Please edit documentation in R/bigmemory.R
 \docType{methods}
 \name{describe,big.matrix-method}
-\alias{attach.big.matrix}
-\alias{attach.resource}
-\alias{describe}
 \alias{describe,big.matrix-method}
+\alias{attach.big.matrix}
+\alias{describe}
+\alias{attach.resource}
 \title{The basic ``big.matrix'' operations for sharing and re-attaching.}
 \usage{
 \S4method{describe}{big.matrix}(x)
@@ -19,7 +19,7 @@ attach.big.matrix(obj, ...)
 the filename of the descriptor for a filebacked matrix, assumed to be in 
 the directory specified by the \code{path} (if one is provided)}
 
-\item{...}{possibly \code{path} which givesthe path where the descriptor 
+\item{...}{possibly \code{path} which gives the path where the descriptor 
 and/or filebacking can be found}
 }
 \value{
@@ -30,7 +30,7 @@ a \code{big.matrix} object.
 corresponding to a shared-memory or file-backed \code{big.matrix}.
 }
 \description{
-The \code{describe} function returns the infommation needed by 
+The \code{describe} function returns the information needed by 
 \code{attach.big.matrix} to reference a shared or file-backed 
 \code{big.matrix} object.
 The \code{attach.big.matrix} and \code{attach.resource} functions create a
@@ -66,14 +66,13 @@ zz[1,1] <- -100
 y[,]
 z[,]
 }
-\author{
-Michael J. Kane and John W. Emerson 
-\email{<bigmemoryauthors@gmail.com>}
-}
 \seealso{
 \code{\link{bigmemory}}, \code{\link{big.matrix}}, or the class 
 documentation \code{\linkS4class{big.matrix}}.
 }
+\author{
+Michael J. Kane and John W. Emerson 
+\email{<bigmemoryauthors@gmail.com>}
+}
 \keyword{classes}
 \keyword{methods}
-

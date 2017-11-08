@@ -3,20 +3,22 @@
 \docType{methods}
 \name{Extract,big.matrix}
 \alias{Extract,big.matrix}
-\alias{[,big.matrix,ANY,ANY,logical-method}
 \alias{[,big.matrix,ANY,ANY,missing-method}
-\alias{[,big.matrix,ANY,missing,logical-method}
-\alias{[,big.matrix,ANY,missing,missing-method}
-\alias{[,big.matrix,matrix,missing,missing-method}
-\alias{[,big.matrix,missing,ANY,logical-method}
+\alias{[,big.matrix,ANY,ANY,logical-method}
 \alias{[,big.matrix,missing,ANY,missing-method}
-\alias{[,big.matrix,missing,missing,logical-method}
+\alias{[,big.matrix,missing,ANY,logical-method}
+\alias{[,big.matrix,ANY,missing,missing-method}
+\alias{[,big.matrix,ANY,missing,logical-method}
 \alias{[,big.matrix,missing,missing,missing-method}
-\alias{[<-,big.matrix,ANY,ANY-method}
-\alias{[<-,big.matrix,ANY,missing-method}
-\alias{[<-,big.matrix,matrix,missing-method}
-\alias{[<-,big.matrix,missing,ANY-method}
-\alias{[<-,big.matrix,missing,missing-method}
+\alias{[,big.matrix,missing,missing,logical-method}
+\alias{[,big.matrix,matrix,missing,missing-method}
+\alias{[<-,big.matrix,numeric,numeric,ANY-method}
+\alias{[<-,big.matrix,missing,missing,ANY-method}
+\alias{[<-,big.matrix,missing,numeric,ANY-method}
+\alias{[<-,big.matrix,numeric,missing,numeric-method}
+\alias{[<-,big.matrix,numeric,missing,matrix-method}
+\alias{[<-,big.matrix,missing,missing,numeric-method}
+\alias{[<-,big.matrix,matrix,missing,numeric-method}
 \title{Extract or Replace}
 \usage{
 \S4method{[}{big.matrix,ANY,ANY,missing}(x, i, j, drop)
@@ -27,7 +29,7 @@
 
 \S4method{[}{big.matrix,missing,ANY,logical}(x, i, j, drop)
 
-\S4method{[}{big.matrix,ANY,missing,missing}(x, i, j, drop)
+\S4method{[}{big.matrix,ANY,missing,missing}(x, i, j, ..., drop = TRUE)
 
 \S4method{[}{big.matrix,ANY,missing,logical}(x, i, j, drop)
 
@@ -37,15 +39,19 @@
 
 \S4method{[}{big.matrix,matrix,missing,missing}(x, i, j, drop)
 
-\S4method{[}{big.matrix,ANY,ANY}(x, i, j) <- value
+\S4method{[}{big.matrix,numeric,numeric,ANY}(x, i, j) <- value
 
-\S4method{[}{big.matrix,missing,ANY}(x, i, j) <- value
+\S4method{[}{big.matrix,missing,missing,ANY}(x, i, j) <- value
 
-\S4method{[}{big.matrix,ANY,missing}(x, i, j) <- value
+\S4method{[}{big.matrix,missing,numeric,ANY}(x, i, j) <- value
 
-\S4method{[}{big.matrix,missing,missing}(x, i, j) <- value
+\S4method{[}{big.matrix,numeric,missing,numeric}(x, i, j, ...) <- value
 
-\S4method{[}{big.matrix,matrix,missing}(x, i, j) <- value
+\S4method{[}{big.matrix,numeric,missing,matrix}(x, i, j, ...) <- value
+
+\S4method{[}{big.matrix,missing,missing,numeric}(x, i, j) <- value
+
+\S4method{[}{big.matrix,matrix,missing,numeric}(x, i, j) <- value
 }
 \arguments{
 \item{x}{A \code{big.matrix object}}
@@ -56,9 +62,10 @@
 
 \item{drop}{Logical indication if reduce to minimum dimensions}
 
+\item{...}{Additional arguments}
+
 \item{value}{typically an array-like R object of similar class}
 }
 \description{
 Extract or replace big.matrix elements
 }
-

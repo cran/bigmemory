@@ -2,31 +2,33 @@
 % Please edit documentation in R/bigmemory.R
 \docType{methods}
 \name{big.matrix}
-\alias{as.big.matrix}
 \alias{big.matrix}
-\alias{file.name}
-\alias{file.name,big.matrix-method}
 \alias{filebacked.big.matrix}
+\alias{as.big.matrix}
 \alias{is.big.matrix}
-\alias{is.big.matrix,ANY-method}
 \alias{is.big.matrix,big.matrix-method}
-\alias{is.filebacked}
-\alias{is.filebacked,big.matrix-method}
-\alias{is.nil}
-\alias{is.readonly}
-\alias{is.readonly,big.matrix-method}
+\alias{is.big.matrix,ANY-method}
 \alias{is.separated}
 \alias{is.separated,big.matrix-method}
-\alias{is.shared}
-\alias{is.shared,big.matrix-method}
+\alias{is.filebacked}
+\alias{is.filebacked,big.matrix-method}
 \alias{shared.name}
 \alias{shared.name,big.matrix-method}
+\alias{file.name}
+\alias{file.name,big.matrix-method}
+\alias{dir.name}
+\alias{dir.name,big.matrix-method}
+\alias{is.shared}
+\alias{is.shared,big.matrix-method}
+\alias{is.readonly}
+\alias{is.readonly,big.matrix-method}
+\alias{is.nil}
 \title{The core "big.matrix" operations.}
 \usage{
 big.matrix(nrow, ncol, type = options()$bigmemory.default.type, init = NULL,
   dimnames = NULL, separated = FALSE, backingfile = NULL,
   backingpath = NULL, descriptorfile = NULL, binarydescriptor = FALSE,
-  shared = TRUE)
+  shared = options()$bigmemory.default.shared)
 
 filebacked.big.matrix(nrow, ncol, type = options()$bigmemory.default.type,
   init = NULL, dimnames = NULL, separated = FALSE, backingfile = NULL,
@@ -34,7 +36,7 @@ filebacked.big.matrix(nrow, ncol, type = options()$bigmemory.default.type,
 
 as.big.matrix(x, type = NULL, separated = FALSE, backingfile = NULL,
   backingpath = NULL, descriptorfile = NULL, binarydescriptor = FALSE,
-  shared = TRUE)
+  shared = options()$bigmemory.default.shared)
 
 is.big.matrix(x)
 
@@ -57,6 +59,10 @@ shared.name(x)
 file.name(x)
 
 \S4method{file.name}{big.matrix}(x)
+
+dir.name(x)
+
+\S4method{dir.name}{big.matrix}(x)
 
 is.shared(x)
 
@@ -132,12 +138,12 @@ is a \code{big.matrix}, or create a \code{big.matrix} from a
 A \code{big.matrix} consists of an object in \R that does nothing 
 more than point to the data structure implemented in \acronym{C++}.  The 
 object acts much like a traditional \R matrix, but helps protect the user 
-from many inadvertant memory-consuming pitfalls of traditional \R matrices 
+from many inadvertent memory-consuming pitfalls of traditional \R matrices 
 and data frames.
 
 There are two \code{big.matrix} types which manage
 data in different ways.  A standard, shared \code{big.matrix} is constrained
-to available \acronym{RAM}, and may be shared acrossseparate \R processes.  
+to available \acronym{RAM}, and may be shared across separate \R processes.  
 A file-backed \code{big.matrix} may exceed available \acronym{RAM} by 
 using hard drive space, and may also be shared across processes.  The 
 atomic types of these matrices may be \code{double}, \code{integer}, 
@@ -235,9 +241,8 @@ y[1,1] <- -100
 y[,]
 z[,]
 }
-\author{
-John W. Emerson and Michael J. Kane 
-\email{<bigmemoryauthors@gmail.com>}
+\references{
+The Bigmemory Project: \url{http://www.bigmemory.org/}.
 }
 \seealso{
 \code{\link{bigmemory}}, and perhaps the class documentation of
@@ -245,6 +250,9 @@ John W. Emerson and Michael J. Kane
 \code{\link{describe}}.  Sister packages \pkg{biganalytics}, \pkg{bigtabulate},
 \pkg{synchronicity}, and \pkg{bigalgebra} provide advanced functionality.
 }
+\author{
+John W. Emerson and Michael J. Kane 
+\email{<bigmemoryauthors@gmail.com>}
+}
 \keyword{classes}
 \keyword{methods}
-

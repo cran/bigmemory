@@ -4,8 +4,8 @@
 #' default, allocated to shared memory and may use memory-mapped files.
 #' Packages \pkg{biganalytics}, \pkg{synchronicity}, \pkg{bigalgebra}, and
 #' \pkg{bigtabulate} provide advanced functionality.  Access to and
-#' manipulation of a \code{\link{big.matrix}} object is exposed in by an S4
-#' class whose interface is simlar to that of an \code{\link{matrix}}.  Use of
+#' manipulation of a \code{\link{big.matrix}} object is exposed in an S4
+#' class whose interface is similar to that of a \code{\link{matrix}}.  Use of
 #' these packages in parallel environments can provide substantial speed and
 #' memory efficiencies.  \pkg{bigmemory} also provides a \acronym{C++}
 #' framework for the development of new tools that can work both with
@@ -36,9 +36,10 @@
 #' well-equipped hardware. Use of \acronym{C/C++} can provide efficiencies, but
 #' is cumbersome for interactive data analysis and lacks the flexibility and
 #' power of 's rich statistical programming environment.  The package
-#' \pkg{bigmemory} and sister packages \pkg{biganalytics}, \pkg{synchronicity},
-#' \pkg{bigtabulate}, and \pkg{bigalgebra} bridge this gap, implementing
-#' massive matrices and supporting their manipulation and exploration. The data
+#' \pkg{bigmemory} and associated packages \pkg{biganalytics}, 
+#' \pkg{synchronicity}, \pkg{bigtabulate}, and \pkg{bigalgebra} bridge 
+#' this gap, implementing massive matrices and supporting their manipulation 
+#' and exploration. The data
 #' structures may be allocated to shared memory, allowing separate processes on
 #' the same computer to share access to a single copy of the data set.  The
 #' data structures may also be file-backed, allowing users to easily manage and
@@ -49,7 +50,7 @@
 #' This project (\pkg{bigmemory} and its sister packages) is still actively
 #' developed, although the design and current features can be viewed as
 #' "stable."  Please feel free to email us with any questions:
-#' bigmemoryauthors@@gmail.com.
+#' bigmemoryauthors@gmail.com.
 #' 
 #' @name bigmemory-package
 #' @aliases bigmemory-package bigmemory
@@ -67,23 +68,36 @@
 #' default (a change in default behavior as of 4.1.1) but may be changed by the
 #' user.
 #' 
-#' Versions >=4.0 represent a major redesign, with the mutexes (locking)
-#' abstracted to package \pkg{synchronicity}, the exploratory data analysis
-#' functionality relocated to package \pkg{biganalytics}, and new linear
-#' algebra support available in package \pkg{bigalgebra}.  Package
-#' \pkg{bigtabulate} extends the \pkg{bigmemory} package with table-, tapply-,
-#' and split-like behavior.  The functions may also be used with regular
-#' matrices for speed and memory-efficiency gains. Package \pkg{bigmemory}
-#' itself is now minimalist, providing only the core functionality.  As an
-#' example, the \code{apply()} method appears in \pkg{biganalytics}, supporting
-#' exploration and analysis, while \code{\link{mwhich}}, \code{\link{morder}}
-#' and \code{\link{mpermute}} appear in \pkg{bigmemory} as fundamental tools
-#' for data manipulation.
-#' 
 #' Note that you can't simply use a \code{big.matrix} with many (most) existing
 #' functions (e.g. \code{\link{lm}}, \code{\link{kmeans}}).  One nice exception
 #' is \code{\link{split}}, because this function only accesses subsets of the
 #' matrix.
+#' 
+#' @section Memory considerations:
+#' 
+#' For obvious reasons memory that the \code{big.matrix} uses is managed outside 
+#' the R memory pool available to the garbage collector and the memory occupied 
+#' by the \code{big.matrix} is not visible to the R.
+#' This has subtle implications:
+#' 
+#' \itemize{
+#' \item Memory usage is not visible via general R functions (e.g. the \code{gc()} function)
+#' \item Garbage collector is mislead by the very small memory footprint of the \code{big.matrix}
+#'       object (which acts merely as a pointer to the external memory structure), which can result
+#'       in much less eagerness to garbage-collect the unused \code{big.memory} objects. 
+#'       After removing a last reference to a big \code{big.matrix}, user should manually run 
+#'       \code{gc()} to reclaim the memory.
+#' \item Attaching the description of already finalized \code{big.matrix} and accessing this object
+#'       will result in undefined behaviour, which simply means it will crash the current R session
+#'       with no hope of saving the data in it. To prevent R from de-allocating (finalizing) the 
+#'       matrices, user should keep at least one \code{big.memory} object somewhere in R memory in at
+#'       least one R session on the current machine.
+#' \item Abruptly closed R (using e.g. task manager) will not have a chance to finalize the 
+#'       \code{big.matrix} objects, which will result in a memory leak, as the \code{big.matrices} 
+#'       will remain in the memory (perhaps under obfuscated names) with no easy way to reconnect R to them. 
+#' 
+#' } 
+#' 
 #' @author Michael J. Kane, John W. Emerson, Peter Haverty, and Charles Determan Jr.
 #' 
 #' Maintainers: Michael J. Kane <bigmemoryauthors@@gmail.com>
