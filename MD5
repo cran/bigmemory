@@ -1,4 +1,4 @@
-fedf92de6f58e37b3296cc2626013fb6 *DESCRIPTION
+70e603f233793d9c816c768b1411c276 *DESCRIPTION
 8b9e12007e354ccc8f2d7a63a2f54531 *NAMESPACE
 f4a0c17c005a872efcdb9f86232f4e6e *NEWS
 20b044de52e16b6a780602293346ad68 *R/RcppExports.R
@@ -12,7 +12,7 @@ fc5c8f75e424213609b3e3cd9b57f5bf *configure.win
 0cd9765e8adee62083d32a17a6b9aa07 *inst/CITATION
 f883e7fbbec7e35f5142805cd80548cf *inst/doc/Overview.R
 3d93d005184d93acf361658cf9051afa *inst/doc/Overview.Rnw
-54ae43517c8c7495bd03519603abdaff *inst/doc/Overview.pdf
+68bb7f8c8ef76927dd8ce971b90b1dca *inst/doc/Overview.pdf
 558ed71dd4adb6ecd1ec2ae0010a53b9 *inst/include/bigmemory/BigMatrix.h
 3b3220d76af2054057b4c9edda832f48 *inst/include/bigmemory/MatrixAccessor.hpp
 f7a48cd4c3554011d0d50f95cb8df982 *inst/include/bigmemory/SharedCounter.h
@@ -47,7 +47,7 @@ e08a535b37c66801a7964260666bee6f *man/mwhich-methods.Rd
 8797f18832c16b65b266a781908675ba *src/BigMatrix.cpp
 6407181dc9b29162edcc6a9bc4c1450a *src/RcppExports.cpp
 81e6f49c7f623fb97376bd4b7132b176 *src/SharedCounter.cpp
-7510c1ac136c316083330b50c5b903ac *src/bigmemory.cpp
+6a6d652296ad9861027df614801320a1 *src/bigmemory.cpp
 22f6c68181a554386131fbf5fb6b6e49 *src/deepcopy.cpp
 b8c4d52de4096d181b7358e4c7c7698a *src/util.cpp
 2b4877ae1449175221f543146cdce8b5 *tests/testthat.R
