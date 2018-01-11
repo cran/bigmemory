@@ -1,6 +1,5 @@
 Package: bigmemory
-Version: 4.5.31
-Date: 2017-11-20
+Version: 4.5.33
 Title: Manage Massive Matrices with Shared Memory and Memory-Mapped
         Files
 Author: Michael J. Kane <kaneplusplus@gmail.com>, John W. Emerson
@@ -8,8 +7,8 @@ Author: Michael J. Kane <kaneplusplus@gmail.com>, John W. Emerson
     Determan Jr. <cdetermanjr@gmail.com>
 Maintainer: Michael J. Kane <bigmemoryauthors@gmail.com>
 Contact: Mike, Jay, and Charles <bigmemoryauthors@gmail.com>
-Depends: R (>= 3.2.0), methods, utils, bigmemory.sri
-Imports: Rcpp
+Depends: R (>= 3.2.0),
+Imports: methods, Rcpp, utils, bigmemory.sri
 Enhances: biganalytics, bigtabulate
 LinkingTo: BH, Rcpp
 Description: Create, store, access, and manipulate massive matrices.
@@ -17,13 +16,14 @@ Description: Create, store, access, and manipulate massive matrices.
     files.  Packages 'biganalytics', 'bigtabulate', 'synchronicity', and
     'bigalgebra' provide advanced functionality.
 License: LGPL-3 | Apache License 2.0
-URL: http://www.bigmemory.org
+URL: https://github.com/kaneplusplus/bigmemory
+BugReports: https://github.com/kaneplusplus/bigmemory/issues
 LazyLoad: yes
 Biarch: yes
 VignetteBuilder: knitr
 Suggests: knitr, testthat
 RoxygenNote: 6.0.1
 NeedsCompilation: yes
-Packaged: 2017-11-20 15:04:34 UTC; mike
+Packaged: 2018-01-10 19:21:27 UTC; mike
 Repository: CRAN
-Date/Publication: 2017-11-20 15:39:30 UTC
+Date/Publication: 2018-01-11 21:36:32 UTC

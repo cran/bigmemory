@@ -16,6 +16,8 @@
 \alias{[<-,big.matrix,numeric,logical,ANY-method}
 \alias{[<-,big.matrix,logical,numeric,ANY-method}
 \alias{[<-,big.matrix,logical,logical,ANY-method}
+\alias{[<-,big.matrix,logical,character,ANY-method}
+\alias{[<-,big.matrix,numeric,character,ANY-method}
 \alias{[<-,big.matrix,missing,missing,ANY-method}
 \alias{[<-,big.matrix,missing,numeric,ANY-method}
 \alias{[<-,big.matrix,missing,logical,ANY-method}
@@ -55,6 +57,10 @@
 \S4method{[}{big.matrix,logical,numeric,ANY}(x, i, j) <- value
 
 \S4method{[}{big.matrix,logical,logical,ANY}(x, i, j) <- value
+
+\S4method{[}{big.matrix,logical,character,ANY}(x, i, j) <- value
+
+\S4method{[}{big.matrix,numeric,character,ANY}(x, i, j) <- value
 
 \S4method{[}{big.matrix,missing,missing,ANY}(x, i, j) <- value
 
