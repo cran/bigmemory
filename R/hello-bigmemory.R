@@ -100,12 +100,10 @@
 #' 
 #' @author Michael J. Kane, John W. Emerson, Peter Haverty, and Charles Determan Jr.
 #' 
-#' Maintainers: Michael J. Kane <bigmemoryauthors@@gmail.com>
+#' Maintainers: Michael J. Kane bigmemoryauthors@gmail.com
 #' @seealso For example, \code{\link{big.matrix}}, \code{\link{mwhich}},
 #' \code{\link{read.big.matrix}}
 #'
-#' @references \url{http://www.bigmemory.org}
-#' 
 #' @keywords package
 #' @examples
 #' 

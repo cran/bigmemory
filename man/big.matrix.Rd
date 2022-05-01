@@ -230,7 +230,6 @@ factors numeric before forming the \code{big.matrix}.  Level labels are
 not preserved and must be managed by the user if desired.
 }
 \examples{
-library(bigmemory)
 x <- big.matrix(10, 2, type='integer', init=-5)
 options(bigmemory.allow.dimnames=TRUE)
 colnames(x) <- c("alpha", "beta")
@@ -276,7 +275,7 @@ The Bigmemory Project: \url{http://www.bigmemory.org/}.
 }
 \author{
 John W. Emerson and Michael J. Kane
-\email{<bigmemoryauthors@gmail.com>}
+\email{bigmemoryauthors@gmail.com}
 }
 \keyword{classes}
 \keyword{methods}

@@ -2,6 +2,7 @@
 #include <fstream>
 //#include <typeinfo>
 
+#define STRICT_R_HEADERS
 #include <Rcpp.h>
 #include "bigmemory/BigMatrix.h"
 #include "bigmemory/MatrixAccessor.hpp"
@@ -386,6 +387,28 @@ SEXP GetMatrixElements( BigMatrix *pMat, double NA_C, double NA_R,
   return ret;
 }
 
+int convert_real_to_int(double val) {
+  if (NumericVector::is_na(val) || val >= (double) INT_MAX + 1 || val <= INT_MIN) {
+    return NA_INTEGER;  
+  }
+  return (int) val;
+}
+
+int convert_real_to_int(double val, bool &warn) {
+  if (NumericVector::is_na(val)) {
+    return NA_INTEGER;  
+  }
+  if (val >= (double) INT_MAX + 1 || val <= INT_MIN) {
+    warn = true;
+    return NA_INTEGER;
+  }
+  int val_int = (int) val;
+  if (val_int != val) {
+    warn = true;
+  }
+  return val_int;
+}
+
 // Function by Florian Prive
 // [[Rcpp::export]]
 SEXP to_int_checked(SEXP x) {
@@ -393,14 +416,15 @@ SEXP to_int_checked(SEXP x) {
   NumericVector nv(x);
   int i, n = nv.size();
   IntegerVector res(n);
+  bool warn = false;
   for (i = 0; i < n; i++) {
-    res[i] = nv[i];
-    if (nv[i] != res[i]) {
+    res[i] = convert_real_to_int(nv[i], warn);
+    if (warn) {
       warning("Value changed when converting to integer type.");
-      break;
+      break;    
     }
   }
-  for (; i < n; i++) res[i] = nv[i];
+  for (; i < n; i++) res[i] = convert_real_to_int(nv[i]);
   return res;
 }
 
@@ -968,7 +992,7 @@ struct NAMaker<double>
 // Note: naLast should be passed as an integer.
 
 template<typename PairType>
-struct SecondLess : public std::binary_function<PairType, PairType, bool>
+struct SecondLess 
 {
   SecondLess( const bool naLast ) : _naLast(naLast) {}
 
@@ -992,7 +1016,7 @@ struct SecondLess : public std::binary_function<PairType, PairType, bool>
 };
 
 template<typename PairType>
-struct SecondGreater : public std::binary_function<PairType, PairType, bool>
+struct SecondGreater 
 {
   SecondGreater(const bool naLast ) : _naLast(naLast) {}
 
@@ -1016,7 +1040,7 @@ struct SecondGreater : public std::binary_function<PairType, PairType, bool>
 };
 
 template<typename PairType>
-struct SecondIsNA : public std::unary_function<PairType, bool>
+struct SecondIsNA 
 {
   bool operator()( const PairType &val ) const
   {

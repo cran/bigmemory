@@ -124,9 +124,6 @@ x[,]
 
 
 }
-\references{
-\url{http://www.bigmemory.org}
-}
 \seealso{
 For example, \code{\link{big.matrix}}, \code{\link{mwhich}},
 \code{\link{read.big.matrix}}
@@ -134,6 +131,6 @@ For example, \code{\link{big.matrix}}, \code{\link{mwhich}},
 \author{
 Michael J. Kane, John W. Emerson, Peter Haverty, and Charles Determan Jr.
 
-Maintainers: Michael J. Kane \href{mailto:bigmemoryauthors@gmail.com}{bigmemoryauthors@gmail.com}
+Maintainers: Michael J. Kane bigmemoryauthors@gmail.com
 }
 \keyword{package}

@@ -11,7 +11,7 @@ FLAGS="PKG_CPPFLAGS=-I../inst/include"
 
 LIBS=""
 
-echo -n "  checking for Sun Studio compiler..."
+echo "  checking for Sun Studio compiler..."
 CC=`${R_HOME}/bin/R CMD config CC`
 cmd=`echo $CC | grep -E 'suncc'`
 if test -n "$cmd"; then
@@ -21,14 +21,14 @@ else
   echo "no"
 fi
 
-echo -n "  checking for OS..."
+echo "  checking for OS..."
 if test `uname` = "Linux" ; then
   echo "Linux"
   FLAGS="${FLAGS} -DLINUX"
-  LIBS="PKG_LIBS=-lrt -lm"
+  LIBS="PKG_LIBS=-lrt -lm -luuid"
 elif test `uname` = "SunOS" ; then
   echo "Solaris"
-  LIBS="PKG_LIBS=-lrt -lm"
+  LIBS="PKG_LIBS=-lrt -lm -luuid"
 elif test `uname` = "Darwin" ; then
   echo "Darwin"
   FLAGS="${FLAGS} -DDARWIN -DLENGTH_HACK"

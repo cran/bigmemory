@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <stdint.h>
 
+#define STRICT_R_HEADERS
 #include <Rcpp.h>
 
 #include <boost/interprocess/shared_memory_object.hpp>
@@ -19,7 +20,6 @@
 #include <boost/interprocess/sync/named_mutex.hpp>
 
 #include "bigmemory/BigMatrix.h"
-//#include "uuid/uuid.h"
 
 #define COND_EXCEPTION_PRINT(bYes)                \
   if (bYes)                                       \
@@ -32,6 +32,11 @@
   if (bYes) Rprintf(str, format);
     
 #define DEBUG false
+
+// This isn't working on Windows.
+// #include <Ruuid.h>
+// The following is done instead. It is a hack.
+#include "uuid/Ruuid.h"
 
 using namespace std;
 using namespace boost;
@@ -190,19 +195,18 @@ bool LocalBigMatrix::destroy()
 
 bool SharedBigMatrix::create_uuid()
 {
-    size_t string_len = 24;
-    std::string letters("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
-    Rcpp::NumericVector inds=
-      Rcpp::runif(string_len, -0.49, letters.size()-0.51);
-    _uuid.clear();
-    for (unsigned int i=0; i < string_len; ++i) {
-      _uuid.push_back(letters[round(inds[i])]);
-    }
+  RU_generate_t generate_fn = (RU_generate_t) R_GetCCallable("uuid", "generate");
+  RU_unparse_t unparse_fn = (RU_unparse_t) R_GetCCallable("uuid", "unparse");
 
-    #ifdef DARWIN
-    // Darwin has a limit on the size of share memory names.
+  uuid_t u;
+  char c[40];
+  generate_fn(u, 1);
+  unparse_fn(u, c, 1);
+  _uuid = c;
+  #ifdef DARWIN
     _uuid.resize(5);
-    #endif
+  #endif
+  return true;
 /*
   uuid_t u;
   char c[40];
@@ -212,8 +216,8 @@ bool SharedBigMatrix::create_uuid()
   #ifdef DARWIN
     _uuid.resize(5);
   #endif
-*/
   return true;
+*/
 }
 
 template<typename T>
