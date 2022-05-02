@@ -1,5 +1,5 @@
 Package: bigmemory
-Version: 4.6.0
+Version: 4.6.1
 Title: Manage Massive Matrices with Shared Memory and Memory-Mapped
         Files
 Authors@R: 
@@ -37,11 +37,11 @@ LazyLoad: yes
 Suggests: testthat, remotes
 RoxygenNote: 7.1.2
 NeedsCompilation: yes
-Packaged: 2022-04-29 17:00:31 UTC; mike
+Packaged: 2022-05-02 14:48:46 UTC; mike
 Author: Michael J. Kane [aut, cre] (<https://orcid.org/0000-0003-1899-6662>),
   John W. Emerson [aut],
   Peter Haverty [aut],
   Charles Determan [aut]
 Maintainer: Michael J. Kane <bigmemoryauthors@gmail.com>
 Repository: CRAN
-Date/Publication: 2022-05-01 15:00:02 UTC
+Date/Publication: 2022-05-02 18:02:03 UTC

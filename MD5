@@ -1,4 +1,4 @@
-4c43bd1c4a88ed1b38170532890ff4ce *DESCRIPTION
+0109a465fe578b092e0acd42c476a5df *DESCRIPTION
 5e949cce7ccf57374b2583fc0251612a *NAMESPACE
 2d924c166f92e96f6caddd1076843ddb *NEWS
 a98bc9d4ab596031420b54fc50b0e3f4 *R/RcppExports.R
@@ -46,7 +46,7 @@ be4a81beaba71aeb7fc6170da511cfba *src/BigMatrix.cpp
 c2bf7709fb87d6a334e6297dcb950af2 *src/RcppExports.cpp
 81e6f49c7f623fb97376bd4b7132b176 *src/SharedCounter.cpp
 fe0aab7a40825cbac554c307efac3db4 *src/bigmemory.cpp
-5ca49195e0a2d03e0da80fd4d114e5ee *src/deepcopy.cpp
+2d8f8902301d7258523c565497a80f47 *src/deepcopy.cpp
 f75d2d22814a0df1ea21d4bbd39ac4f8 *src/util.cpp
 2b4877ae1449175221f543146cdce8b5 *tests/testthat.R
 03f8ae8580c8a60582fd06eb303f39ca *tests/testthat/test_assignment.R
