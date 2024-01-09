@@ -33,18 +33,12 @@ checkReadOnly <- function(x)
 #' @export
 setClass('big.matrix', representation(address='externalptr'))
 
-#' @rdname big.matrix.descriptor-class
 setClass('descriptor', representation(description='list'))
 
 #' @template big.matrix.descriptor_class_template
-#' @rdname big-matrix-descriptor-class
 #' @export
 setClass('big.matrix.descriptor', contains='descriptor')
 
-# Here, x is a big.matrix, and the result is a descriptor.
-
-# Here, x is a descriptor, and the result is the description which is
-# the relevant data needed for the attach.
 setGeneric('description', function(x) standardGeneric('description'))
 
 #' @rdname attach.big.matrix
@@ -1673,7 +1667,8 @@ setMethod('sub.big.matrix', signature(x='big.matrix'),
            backingpath))
   })
 
-#' @rdname big.matrix.descriptor-class
+#' @title Retrieve a big.matrix "view"
+#' @rdname sub.big.matrix
 #' @param x A descriptor object
 #' @param firstRow the first row of the submatrix
 #' @param lastRow the last row of the submatrix if not NULL
@@ -2084,7 +2079,7 @@ setMethod('is.readonly', signature(x='big.matrix'),
 #' @rdname big.matrix
 #' @export
 is.nil <- function(address) {
-  if (class(address)!="externalptr") {
+  if (!inherits(address, "externalptr")) {
     stop("address is not an externalptr.")
   }
   isnil(address)
